@@ -1,23 +1,29 @@
-# Use Node.js base image (version 16 with Alpine for a small image size)
-FROM node:16-alpine
+# Use a newer Node.js version (20 LTS)
+FROM node:20
 
-# Set the working directory inside the container
+# Set the working directory
 WORKDIR /app
 
-# Install bash (optional, but useful for interactive use)
-RUN apk add --no-cache bash
+# Install bash and dependencies
+RUN apt-get update && apt-get install -y bash && rm -rf /var/lib/apt/lists/*
 
-# Copy package.json and package-lock.json first (for efficient caching)
+# Copy package.json and package-lock.json
 COPY package*.json ./
 
-# Install npm dependencies
+# Install dependencies
 RUN npm install
 
-# Install additional dependencies for hot reloading (optional)
+# Install additional dependencies for Tailwind CSS
+RUN npm install tailwindcss @tailwindcss/postcss autoprefixer postcss postcss-loader --save-dev
+
+# Copy the entire project (including Tailwind, PostCSS config, etc.)
+COPY . .
+
+# Install global dependencies (nodemon)
 RUN npm install -g nodemon
 
-# Expose the port React uses (default is 3000)
+# Expose the port
 EXPOSE 3000
 
-# Start the development server (with live reload)
+# Start the app
 CMD ["npm", "start"]
