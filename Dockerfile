@@ -4,19 +4,19 @@ FROM node:20
 # Set the working directory
 WORKDIR /app
 
-# Install bash and dependencies
-RUN apt-get update && apt-get install -y bash && rm -rf /var/lib/apt/lists/*
-
-# Copy package.json and package-lock.json
+# Copy package.json and package-lock.json before installing dependencies
 COPY package*.json ./
 
-# Install dependencies
-RUN npm install
+# Install dependencies, including missing ones
+RUN npm install 
 
-# Install additional dependencies for Tailwind CSS
-RUN npm install tailwindcss @tailwindcss/postcss autoprefixer postcss postcss-loader --save-dev
+# Install additional dependencies that were missing
+RUN npm install react-router-dom lucide-react framer-motion 
 
-# Copy the entire project (including Tailwind, PostCSS config, etc.)
+# Install TypeScript type definitions for those dependencies
+#RUN npm install --save-dev @types/react-router-dom @types/lucide-react @types/framer-motion
+
+# Copy the rest of the application files
 COPY . .
 
 # Install global dependencies (nodemon)
@@ -26,4 +26,4 @@ RUN npm install -g nodemon
 EXPOSE 3000
 
 # Start the app
-CMD ["npm", "start"]
+#CMD ["npm", "start"]

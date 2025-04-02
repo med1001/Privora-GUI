@@ -15,8 +15,11 @@
   "dependencies": {
     "@mui/icons-material": "^6.4.6",
     "@mui/material": "^6.4.6",
+    "framer-motion": "^12.6.2",
+    "lucide-react": "^0.486.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "react-router-dom": "^7.4.1",
     "react-scripts": "^5.0.1",
     "socket.io-client": "^4.8.1"
   },
