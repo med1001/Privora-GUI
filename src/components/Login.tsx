@@ -1,7 +1,11 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 
-const Login = () => {
+interface LoginProps {
+  onLogin: (token: string) => void; // Function to update authentication state
+}
+
+const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const [username, setUsername] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
@@ -10,6 +14,7 @@ const Login = () => {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     console.log("[INFO] Attempting login with username:", username);
+    
     try {
       const response = await fetch("http://127.0.0.1:5000/login", {
         method: "POST",
@@ -21,13 +26,14 @@ const Login = () => {
       const data = await response.json();
       console.log("[DEBUG] Server response JSON:", data);
 
-      if (response.ok) {
+      if (response.ok && data.token) {
         console.log("[SUCCESS] Login successful. Storing token and navigating to chat.");
         localStorage.setItem("token", data.token);
-        navigate("/chat");
+        onLogin(data.token); // Notify App.tsx about successful login
+        navigate("/chat");   // Navigate to chat after updating authentication state
       } else {
         console.error("[ERROR] Login failed:", data.error);
-        setError(data.error);
+        setError(data.error || "Invalid credentials");
       }
     } catch (error) {
       console.error("[ERROR] Server error:", error);

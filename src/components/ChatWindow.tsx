@@ -1,13 +1,15 @@
 import React, { useState } from "react";
-import { Search } from "lucide-react"; // Import search icon
+import { Search, LogOut, Settings } from "lucide-react";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "./dropdown-menu";
 
 interface ChatWindowProps {
   selectedChat: string;
   messages: string[];
   onSendMessage: (message: string) => void;
+  onLogout: () => void;
 }
 
-const ChatWindow: React.FC<ChatWindowProps> = ({ selectedChat, messages, onSendMessage }) => {
+const ChatWindow: React.FC<ChatWindowProps> = ({ selectedChat, messages, onSendMessage, onLogout }) => {
   const [message, setMessage] = useState("");
   const [search, setSearch] = useState("");
 
@@ -20,11 +22,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ selectedChat, messages, onSendM
 
   return (
     <div className="flex flex-col w-3/4 bg-white shadow-md">
-      {/* Header with selected chat name + search bar */}
       <div className="bg-blue-700 text-white p-4 flex items-center justify-between">
         <span className="text-lg font-semibold">{selectedChat}</span>
 
-        {/* Search Bar */}
         <div className="relative">
           <input
             type="text"
@@ -35,9 +35,31 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ selectedChat, messages, onSendM
           />
           <Search className="absolute left-3 top-2.5 text-gray-500" size={18} />
         </div>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="w-10 h-10 bg-gray-300 text-black rounded-full flex items-center justify-center font-semibold cursor-pointer hover:bg-gray-400">
+              TU
+            </button>
+          </DropdownMenuTrigger>
+
+          <DropdownMenuContent className="bg-white shadow-md rounded-lg p-2 w-40">
+            <DropdownMenuItem className="flex items-center p-2 hover:bg-gray-100 rounded" onClick={() => alert("Settings clicked!")}> 
+              <Settings className="w-5 h-5 mr-2" /> Settings
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              className="flex items-center p-2 hover:bg-gray-100 rounded text-red-600"
+              onClick={() => {
+                console.log("Disconnect clicked!");
+                onLogout();
+              }}
+            >
+              <LogOut className="w-5 h-5 mr-2" /> Disconnect
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
-      {/* Messages */}
       <div className="flex-grow p-4 overflow-y-auto space-y-3">
         {messages.map((msg, index) => (
           <div
@@ -51,7 +73,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ selectedChat, messages, onSendM
         ))}
       </div>
 
-      {/* Message Input */}
       <div className="p-4 border-t bg-gray-100 flex items-center">
         <input
           type="text"
