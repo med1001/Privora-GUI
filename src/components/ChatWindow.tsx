@@ -14,6 +14,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ selectedChat, messages, onSendM
   const [message, setMessage] = useState("");
   const [search, setSearch] = useState("");
   const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false); // Track loading state
 
   useEffect(() => {
     if (search.trim() === "") {
@@ -28,6 +29,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ selectedChat, messages, onSendM
           console.error("No token found");
           return;
         }
+
+        setLoading(true); // Set loading to true when starting the fetch
 
         const response = await fetch(`http://127.0.0.1:5000/search-users?q=${search}`, {
           method: "GET",
@@ -48,6 +51,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ selectedChat, messages, onSendM
         setSuggestions(data); // Update suggestions state
       } catch (error) {
         console.error("Error fetching users:", error);
+      } finally {
+        setLoading(false); // Set loading to false after fetch completes
       }
     };
 
@@ -80,8 +85,14 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ selectedChat, messages, onSendM
           <Search className="absolute left-3 top-2.5 text-gray-500" size={18} />
 
           {/* Suggestions */}
-          {suggestions.length > 0 && (
-            <div className="absolute top-12 left-0 w-full bg-white shadow-lg rounded-lg max-h-60 overflow-y-auto">
+          {loading && !suggestions.length && (
+            <div className="absolute top-12 left-0 w-full bg-white shadow-lg rounded-lg max-h-60 flex items-center justify-center">
+              <div className="w-8 h-8 border-t-4 border-blue-500 border-solid rounded-full animate-spin"></div> {/* Spinner */}
+            </div>
+          )}
+
+          {suggestions.length > 0 ? (
+            <div className="absolute top-12 left-0 w-full bg-white shadow-lg rounded-lg max-h-60 overflow-y-auto z-10 border-2 border-red-500">
               {suggestions.map((user) => (
                 <div
                   key={user}
@@ -92,10 +103,12 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ selectedChat, messages, onSendM
                     setSuggestions([]); // Hide suggestions after selecting
                   }}
                 >
-                  <span>{user}</span> {/* Ensure the suggestion is displayed */}
+                  <span className="text-black">{user}</span> {/* Ensure the suggestion text is black */}
                 </div>
               ))}
             </div>
+          ) : (
+            search.trim() && <div className="absolute top-12 left-0 w-full bg-white shadow-lg rounded-lg p-2 text-center">No users found</div>
           )}
         </div>
 
