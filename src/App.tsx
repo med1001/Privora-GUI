@@ -34,10 +34,12 @@ const Chat: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
         messages={messages[selectedChat] || []}
         onSendMessage={sendMessage}
         onLogout={onLogout}
+        onSelectChat={setSelectedChat}  // 🔹 FIX: Add this missing prop
       />
     </div>
   );
 };
+
 
 const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
