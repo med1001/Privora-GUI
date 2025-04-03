@@ -92,7 +92,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ selectedChat, messages, onSendM
           )}
 
           {suggestions.length > 0 ? (
-            <div className="absolute top-12 left-0 w-full bg-white shadow-lg rounded-lg max-h-60 overflow-y-auto z-10 border-2 border-red-500">
+            <div className="absolute top-12 left-0 w-full bg-white shadow-lg rounded-lg max-h-60 overflow-y-auto z-10">
               {suggestions.map((user) => (
                 <div
                   key={user}
@@ -120,10 +120,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ selectedChat, messages, onSendM
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="bg-white shadow-md rounded-lg p-2 w-40">
-            <DropdownMenuItem className="flex items-center p-2 hover:bg-gray-100 rounded" onClick={() => alert("Settings clicked!")}>
+            <DropdownMenuItem className="flex items-center p-2 hover:bg-gray-100 rounded" onClick={() => alert("Settings clicked!")}> 
               <Settings className="w-5 h-5 mr-2" /> Settings
             </DropdownMenuItem>
-            <DropdownMenuItem className="flex items-center p-2 hover:bg-gray-100 rounded text-red-600" onClick={onLogout}>
+            <DropdownMenuItem className="flex items-center p-2 hover:bg-gray-100 rounded text-red-600" onClick={onLogout}> 
               <LogOut className="w-5 h-5 mr-2" /> Log out
             </DropdownMenuItem>
           </DropdownMenuContent>
