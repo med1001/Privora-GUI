@@ -2,9 +2,13 @@ import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
-const conversations = ["Mohamed Ben Moussa", "Alice Johnson", "Project Team"];
+interface SidebarProps {
+  onSelect: (name: string) => void;
+  selectedChat: string;
+  recentChats: string[];
+}
 
-const Sidebar: React.FC<{ onSelect: (name: string) => void; selectedChat: string }> = ({ onSelect, selectedChat }) => {
+const Sidebar: React.FC<SidebarProps> = ({ onSelect, selectedChat, recentChats }) => {
   const [collapsed, setCollapsed] = useState<boolean>(false);
 
   return (
@@ -26,11 +30,11 @@ const Sidebar: React.FC<{ onSelect: (name: string) => void; selectedChat: string
       {/* Chat Section */}
       <h2 className={`text-lg font-semibold mb-4 ${collapsed ? 'hidden' : 'block'}`}>Chat</h2>
 
-      {/* Recent Section */}
+      {/* Recent Chats */}
       <div className="w-full">
         <h3 className={`text-sm font-medium mb-2 ${collapsed ? 'hidden' : 'block'}`}>Recent</h3>
         <ul className="space-y-3 w-full">
-          {conversations.map((chat) => (
+          {recentChats.map((chat) => (
             <motion.li 
               key={chat} 
               onClick={() => onSelect(chat)}
