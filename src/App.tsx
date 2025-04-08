@@ -10,38 +10,37 @@ interface Messages {
   [key: string]: string[]; // Explicitly define message type
 }
 
-const initialMessages: Messages = {
-  "Mohamed Ben Moussa": ["Bonjour, comment ça va ?"],
-  "Alice Johnson": ["Hey, how's it going?"],
-  "Project Team": ["Team meeting at 3 PM."],
-  "David Smith": ["Hello!"],
-  "Sarah Connor": ["We need to talk..."],
-};
-
 interface ChatProps {
   onLogout: () => void;
 }
 
 const Chat: React.FC<ChatProps> = ({ onLogout }) => {
-  const [selectedChat, setSelectedChat] = useState<string>("Mohamed Ben Moussa");
-  const [messages, setMessages] = useState<Messages>(initialMessages);
-  const [recentChats, setRecentChats] = useState<string[]>(Object.keys(initialMessages));
+  const [selectedChat, setSelectedChat] = useState<string>("");
+  const [messages, setMessages] = useState<Messages>({});
+  const [recentChats, setRecentChats] = useState<string[]>(Object.keys({}));
 
   const token = localStorage.getItem("token");
 
-  // ✅ Corrected destructuring (removed socketStatus)
-  const { sendMessage: sendWsMessage } = useWebSocket(token, (message: string) => {
-    console.log("[Chat] WebSocket message received:", message);
+  const { sendMessage: sendWsMessage } = useWebSocket(token, (rawMessage: string) => {
+    console.log("[Chat] WebSocket message received:", rawMessage);
 
-    const [type, sender, content] = message.split(":");
-    const from = type === "PRIVATE" ? sender : "Server";
+    try {
+      const parsed = JSON.parse(rawMessage);
+      const { from, message } = parsed;
 
-    setMessages((prev) => ({
-      ...prev,
-      [from]: [...(prev[from] || []), content],
-    }));
+      if (from && message) {
+        setMessages((prev) => ({
+          ...prev,
+          [from]: [...(prev[from] || []), message],
+        }));
 
-    setRecentChats((prev) => (prev.includes(from) ? prev : [from, ...prev]));
+        setRecentChats((prev) => (prev.includes(from) ? prev : [from, ...prev]));
+
+        if (!selectedChat) setSelectedChat(from);
+      }
+    } catch (err) {
+      console.error("Invalid WebSocket JSON:", rawMessage, err);
+    }
   });
 
   const sendMessage = (message: string) => {
@@ -55,8 +54,7 @@ const Chat: React.FC<ChatProps> = ({ onLogout }) => {
         prev.includes(selectedChat) ? prev : [selectedChat, ...prev]
       );
 
-      // Send to backend
-      sendWsMessage(message);
+      sendWsMessage(message, selectedChat); // ✅ Send with recipient
     }
   };
 
@@ -77,6 +75,7 @@ const Chat: React.FC<ChatProps> = ({ onLogout }) => {
     </div>
   );
 };
+
 
 const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);

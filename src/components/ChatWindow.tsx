@@ -1,4 +1,3 @@
-// src/components/ChatWindow.tsx
 import React, { useState, useEffect } from "react";
 import { Search, LogOut, Settings } from "lucide-react";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "./dropdown-menu";
@@ -6,18 +5,60 @@ import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuIte
 interface ChatWindowProps {
   selectedChat: string;
   messages: string[];
-  onSendMessage: (message: string) => void;  // <-- Add this prop type
+  onSendMessage: (message: string) => void;
   onLogout: () => void;
   onSelectChat: (chatName: string) => void;
 }
 
-const ChatWindow: React.FC<ChatWindowProps> = ({ 
+const ChatWindow: React.FC<ChatWindowProps> = ({
   selectedChat, messages, onSendMessage, onLogout, onSelectChat
 }) => {
   const [message, setMessage] = useState("");
   const [search, setSearch] = useState("");
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  // 🧠 Check if user is logged in based on token
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      setIsAuthenticated(true);
+    } else {
+      setIsAuthenticated(false); // If there's no token, set as unauthenticated
+    }
+  }, []);
+
+  // 🧠 Récupérer les initiales de l'utilisateur (en majuscule)
+  const getUserInitials = () => {
+    if (!isAuthenticated) {
+      return ""; // Do not show initials before login
+    }
+
+    const fullName = localStorage.getItem("username");
+    if (!fullName || fullName.trim() === "") {
+      return "?";  // If username is missing, return "?"
+    }
+
+    console.log("[DEBUG] Full name from localStorage:", fullName);
+
+    const parts = fullName.trim().split(" ");
+    console.log("[DEBUG] Split name into parts:", parts);
+
+    // If there's more than one part, take the first letter of the first and second name.
+    // If there's only one name, take the first letter of that name.
+    let initials = parts.length > 1
+      ? parts[0][0] + parts[1][0] // First letters of the first two words
+      : parts[0][0]; // Only the first letter of the single word
+
+    console.log("[DEBUG] Extracted initials before uppercase:", initials);
+
+    initials = initials.toUpperCase(); // Force the initials to uppercase
+
+    console.log("[DEBUG] Final initials:", initials);
+
+    return initials;
+  };
 
   useEffect(() => {
     if (search.trim() === "") {
@@ -29,7 +70,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       try {
         const token = localStorage.getItem("token");
         if (!token) {
-          console.error("No token found");
+          console.error("Pas de token trouvé");
           return;
         }
 
@@ -44,16 +85,14 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         });
 
         if (response.status === 401) {
-          console.error("Unauthorized request. Check your authentication token.");
+          console.error("Requête non autorisée. Vérifiez votre token d'authentification.");
           return;
         }
 
         const data = await response.json();
-        console.log("Received suggestions: ", data);
-
         setSuggestions(data);
       } catch (error) {
-        console.error("Error fetching users:", error);
+        console.error("Erreur lors de la récupération des utilisateurs :", error);
       } finally {
         setLoading(false);
       }
@@ -64,7 +103,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   }, [search]);
 
   const sendMessage = () => {
-    console.log("[ChatWindow] Send button clicked. Message:", message);
     if (message.trim() !== "") {
       onSendMessage(message);
       setMessage("");
@@ -88,7 +126,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           />
           <Search className="absolute left-3 top-2.5 text-gray-500" size={18} />
 
-          {/* Suggestions */}
           {loading && !suggestions.length && (
             <div className="absolute top-12 left-0 w-full bg-white shadow-lg rounded-lg max-h-60 flex items-center justify-center">
               <div className="w-8 h-8 border-t-4 border-blue-500 border-solid rounded-full animate-spin"></div>
@@ -116,22 +153,24 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           )}
         </div>
 
-        {/* User Menu */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button className="w-10 h-10 bg-gray-300 text-black rounded-full flex items-center justify-center font-semibold cursor-pointer hover:bg-gray-400">
-              TU
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent className="bg-white shadow-md rounded-lg p-2 w-40">
-            <DropdownMenuItem className="flex items-center p-2 hover:bg-gray-100 rounded" onClick={() => alert("Settings clicked!")}> 
-              <Settings className="w-5 h-5 mr-2" /> Settings
-            </DropdownMenuItem>
-            <DropdownMenuItem className="flex items-center p-2 hover:bg-gray-100 rounded text-red-600" onClick={onLogout}> 
-              <LogOut className="w-5 h-5 mr-2" /> Log out
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        {/* User Menu avec Initiales */}
+        {isAuthenticated && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="w-10 h-10 bg-gray-300 text-black rounded-full flex items-center justify-center font-semibold cursor-pointer hover:bg-gray-400">
+                {getUserInitials()}
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="bg-white shadow-md rounded-lg p-2 w-40">
+              <DropdownMenuItem className="flex items-center p-2 hover:bg-gray-100 rounded" onClick={() => alert("Settings clicked!")}>
+                <Settings className="w-5 h-5 mr-2" /> Settings
+              </DropdownMenuItem>
+              <DropdownMenuItem className="flex items-center p-2 hover:bg-gray-100 rounded text-red-600" onClick={onLogout}>
+                <LogOut className="w-5 h-5 mr-2" /> Log out
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </div>
 
       {/* Messages */}

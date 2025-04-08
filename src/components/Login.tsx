@@ -27,8 +27,12 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
       console.log("[DEBUG] Server response JSON:", data);
 
       if (response.ok && data.token) {
-        console.log("[SUCCESS] Login successful. Storing token and navigating to chat.");
+        console.log("[SUCCESS] Login successful. Storing token and username, navigating to chat.");
+
         localStorage.setItem("token", data.token);
+
+        localStorage.setItem("username", username);
+        
         onLogin(data.token); // Notify App.tsx about successful login
         navigate("/chat");   // Navigate to chat after updating authentication state
       } else {
