@@ -34,7 +34,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelect, selectedChat, recentChats }
       <div className="w-full">
         <h3 className={`text-sm font-medium mb-2 ${collapsed ? 'hidden' : 'block'}`}>Recent</h3>
         <ul className="space-y-3 w-full">
-          {recentChats.map((chat) => (
+          {recentChats?.map((chat) => (
             <motion.li 
               key={chat} 
               onClick={() => onSelect(chat)}

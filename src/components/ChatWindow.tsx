@@ -1,6 +1,11 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Search, LogOut, Settings } from "lucide-react";
-import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "./dropdown-menu";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "./dropdown-menu";
 
 interface ChatWindowProps {
   selectedChat: string;
@@ -11,99 +16,76 @@ interface ChatWindowProps {
 }
 
 const ChatWindow: React.FC<ChatWindowProps> = ({
-  selectedChat, messages, onSendMessage, onLogout, onSelectChat
+  selectedChat,
+  messages,
+  onSendMessage,
+  onLogout,
+  onSelectChat,
 }) => {
   const [message, setMessage] = useState("");
   const [search, setSearch] = useState("");
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
-  // 🧠 Check if user is logged in based on token
+  const username = localStorage.getItem("username");
+
   useEffect(() => {
     const token = localStorage.getItem("token");
-    if (token) {
-      setIsAuthenticated(true);
-    } else {
-      setIsAuthenticated(false); // If there's no token, set as unauthenticated
-    }
+    setIsAuthenticated(!!token);
   }, []);
 
-  // 🧠 Récupérer les initiales de l'utilisateur (en majuscule)
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages]);
+
   const getUserInitials = () => {
-    if (!isAuthenticated) {
-      return ""; // Do not show initials before login
-    }
-
-    const fullName = localStorage.getItem("username");
-    if (!fullName || fullName.trim() === "") {
-      return "?";  // If username is missing, return "?"
-    }
-
-    console.log("[DEBUG] Full name from localStorage:", fullName);
-
+    if (!isAuthenticated) return "";
+    const fullName = localStorage.getItem("username") || "?";
     const parts = fullName.trim().split(" ");
-    console.log("[DEBUG] Split name into parts:", parts);
-
-    // If there's more than one part, take the first letter of the first and second name.
-    // If there's only one name, take the first letter of that name.
-    let initials = parts.length > 1
-      ? parts[0][0] + parts[1][0] // First letters of the first two words
-      : parts[0][0]; // Only the first letter of the single word
-
-    console.log("[DEBUG] Extracted initials before uppercase:", initials);
-
-    initials = initials.toUpperCase(); // Force the initials to uppercase
-
-    console.log("[DEBUG] Final initials:", initials);
-
-    return initials;
+    const initials = parts.length > 1
+      ? parts[0][0] + parts[1][0]
+      : parts[0][0];
+    return initials.toUpperCase();
   };
 
   useEffect(() => {
-    if (search.trim() === "") {
+    if (!search.trim()) {
       setSuggestions([]);
       return;
     }
 
     const fetchUsers = async () => {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+
+      setLoading(true);
       try {
-        const token = localStorage.getItem("token");
-        if (!token) {
-          console.error("Pas de token trouvé");
-          return;
-        }
-
-        setLoading(true);
-
-        const response = await fetch(`http://127.0.0.1:5000/search-users?q=${search}`, {
-          method: "GET",
+        const res = await fetch(`http://127.0.0.1:5000/search-users?q=${search}`, {
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`,
+            Authorization: `Bearer ${token}`,
           },
         });
 
-        if (response.status === 401) {
-          console.error("Requête non autorisée. Vérifiez votre token d'authentification.");
-          return;
-        }
-
-        const data = await response.json();
+        const data = await res.json();
         setSuggestions(data);
-      } catch (error) {
-        console.error("Erreur lors de la récupération des utilisateurs :", error);
+      } catch (err) {
+        console.error("Error fetching users", err);
       } finally {
         setLoading(false);
       }
     };
 
-    const timeoutId = setTimeout(fetchUsers, 300);
-    return () => clearTimeout(timeoutId);
+    const timeout = setTimeout(fetchUsers, 300);
+    return () => clearTimeout(timeout);
   }, [search]);
 
-  const sendMessage = () => {
-    if (message.trim() !== "") {
+  const send = () => {
+    if (message.trim()) {
       onSendMessage(message);
       setMessage("");
     }
@@ -113,9 +95,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     <div className="flex flex-col w-3/4 bg-white shadow-md">
       {/* Header */}
       <div className="bg-blue-700 text-white p-4 flex items-center justify-between">
-        <span className="text-lg font-semibold">{selectedChat}</span>
+        <span className="text-lg font-semibold">{selectedChat || "No user selected"}</span>
 
-        {/* Search Bar */}
         <div className="relative">
           <input
             type="text"
@@ -132,7 +113,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
             </div>
           )}
 
-          {suggestions.length > 0 ? (
+          {suggestions.length > 0 && (
             <div className="absolute top-12 left-0 w-full bg-white shadow-lg rounded-lg max-h-60 overflow-y-auto z-10">
               {suggestions.map((user) => (
                 <div
@@ -148,12 +129,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                 </div>
               ))}
             </div>
-          ) : (
-            search.trim() && <div className="absolute top-12 left-0 w-full bg-white shadow-lg rounded-lg p-2 text-center">No users found</div>
           )}
         </div>
 
-        {/* User Menu avec Initiales */}
         {isAuthenticated && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -162,10 +140,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="bg-white shadow-md rounded-lg p-2 w-40">
-              <DropdownMenuItem className="flex items-center p-2 hover:bg-gray-100 rounded" onClick={() => alert("Settings clicked!")}>
+              <DropdownMenuItem onClick={() => alert("Settings clicked!")}>
                 <Settings className="w-5 h-5 mr-2" /> Settings
               </DropdownMenuItem>
-              <DropdownMenuItem className="flex items-center p-2 hover:bg-gray-100 rounded text-red-600" onClick={onLogout}>
+              <DropdownMenuItem onClick={onLogout} className="text-red-600">
                 <LogOut className="w-5 h-5 mr-2" /> Log out
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -174,18 +152,26 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       </div>
 
       {/* Messages */}
-      <div className="flex-grow p-4 overflow-y-auto space-y-3">
-        {messages.map((msg, index) => (
-          <div
-            key={index}
-            className={`p-3 rounded-lg max-w-xs ${index % 2 === 0 ? "bg-gray-200 self-start" : "bg-blue-500 text-white self-end"}`}
-          >
-            {msg}
-          </div>
-        ))}
+      <div className="flex-grow p-4 overflow-y-auto space-y-3" ref={scrollRef}>
+        {messages.map((msg, idx) => {
+          const [sender, ...rest] = msg.split(": ");
+          const isOwnMessage = sender === username;
+          return (
+            <div
+              key={idx}
+              className={`p-3 rounded-lg max-w-xs ${
+                isOwnMessage
+                  ? "bg-blue-500 text-white self-end ml-auto"
+                  : "bg-gray-200 text-black self-start mr-auto"
+              }`}
+            >
+              {rest.join(": ")}
+            </div>
+          );
+        })}
       </div>
 
-      {/* Message Input */}
+      {/* Input */}
       <div className="p-4 border-t bg-gray-100 flex items-center">
         <input
           type="text"
@@ -193,10 +179,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           placeholder="Type a message..."
           value={message}
           onChange={(e) => setMessage(e.target.value)}
-          onKeyPress={(e) => e.key === "Enter" && sendMessage()}
+          onKeyPress={(e) => e.key === "Enter" && send()}
         />
         <button
-          onClick={sendMessage}
+          onClick={send}
           className="ml-3 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-800 transition"
         >
           Send

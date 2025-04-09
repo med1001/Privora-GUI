@@ -4,10 +4,10 @@ import Sidebar from "./components/sidebar";
 import ChatWindow from "./components/ChatWindow";
 import Login from "./components/Login";
 import Register from "./components/Register";
-import useWebSocket from "./hooks/useWebSockets"; // Or wherever it's located
+import useWebSocket from "./hooks/useWebSockets";
 
 interface Messages {
-  [key: string]: string[]; // Explicitly define message type
+  [key: string]: string[];
 }
 
 interface ChatProps {
@@ -17,44 +17,45 @@ interface ChatProps {
 const Chat: React.FC<ChatProps> = ({ onLogout }) => {
   const [selectedChat, setSelectedChat] = useState<string>("");
   const [messages, setMessages] = useState<Messages>({});
-  const [recentChats, setRecentChats] = useState<string[]>(Object.keys({}));
+  const [recentChats, setRecentChats] = useState<string[]>([]);
 
   const token = localStorage.getItem("token");
+  const username = localStorage.getItem("username");
 
-  const { sendMessage: sendWsMessage } = useWebSocket(token, (rawMessage: string) => {
-    console.log("[Chat] WebSocket message received:", rawMessage);
-
+  const { sendMessage: sendWsMessage } = useWebSocket(token, (parsed: any) => {
     try {
-      const parsed = JSON.parse(rawMessage);
+  //    const parsed = JSON.parse(rawMessage);
       const { from, message } = parsed;
 
       if (from && message) {
         setMessages((prev) => ({
           ...prev,
-          [from]: [...(prev[from] || []), message],
+          [from]: [...(prev[from] || []), `${from}: ${message}`],
         }));
 
-        setRecentChats((prev) => (prev.includes(from) ? prev : [from, ...prev]));
+        setRecentChats((prev) =>
+          prev.includes(from) ? prev : [from, ...prev]
+        );
 
         if (!selectedChat) setSelectedChat(from);
       }
     } catch (err) {
-      console.error("Invalid WebSocket JSON:", rawMessage, err);
+      console.error("Invalid WebSocket JSON:", parsed, err);
     }
   });
 
   const sendMessage = (message: string) => {
-    if (message.trim() !== "") {
+    if (message.trim() !== "" && selectedChat && username) {
       setMessages((prev) => ({
         ...prev,
-        [selectedChat]: [...(prev[selectedChat] || []), message],
+        [selectedChat]: [...(prev[selectedChat] || []), `${username}: ${message}`],
       }));
 
       setRecentChats((prev) =>
         prev.includes(selectedChat) ? prev : [selectedChat, ...prev]
       );
 
-      sendWsMessage(message, selectedChat); // ✅ Send with recipient
+      sendWsMessage(message, selectedChat);
     }
   };
 

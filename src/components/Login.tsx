@@ -14,7 +14,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     console.log("[INFO] Attempting login with username:", username);
-    
+
     try {
       const response = await fetch("http://127.0.0.1:5000/login", {
         method: "POST",
@@ -30,9 +30,11 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
         console.log("[SUCCESS] Login successful. Storing token and username, navigating to chat.");
 
         localStorage.setItem("token", data.token);
+        localStorage.setItem("username", username); // Store username
 
-        localStorage.setItem("username", username);
-        
+        // Optionally, log the username here as well
+        console.log("[DEBUG] Username stored:", localStorage.getItem('username'));
+
         onLogin(data.token); // Notify App.tsx about successful login
         navigate("/chat");   // Navigate to chat after updating authentication state
       } else {
