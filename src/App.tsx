@@ -24,10 +24,9 @@ const Chat: React.FC<ChatProps> = ({ onLogout }) => {
 
   const { sendMessage: sendWsMessage } = useWebSocket(token, (parsed: any) => {
     try {
-  //    const parsed = JSON.parse(rawMessage);
-      const { from, message } = parsed;
+      if (parsed.type === "message" && parsed.from && parsed.message) {
+        const { from, message } = parsed;
 
-      if (from && message) {
         setMessages((prev) => ({
           ...prev,
           [from]: [...(prev[from] || []), `${from}: ${message}`],
@@ -38,7 +37,14 @@ const Chat: React.FC<ChatProps> = ({ onLogout }) => {
         );
 
         if (!selectedChat) setSelectedChat(from);
+      } 
+      
+      // ✅ Handle initial contact list
+      else if (parsed.contacts && Array.isArray(parsed.contacts)) {
+        console.log("[WebSocket] Setting recent chats from backend:", parsed.contacts);
+        setRecentChats(parsed.contacts);
       }
+
     } catch (err) {
       console.error("Invalid WebSocket JSON:", parsed, err);
     }
