@@ -24,31 +24,50 @@ const Chat: React.FC<ChatProps> = ({ onLogout }) => {
 
   const { sendMessage: sendWsMessage } = useWebSocket(token, (parsed: any) => {
     try {
-      if (parsed.type === "message" && parsed.from && parsed.message) {
+      // Handle a plain contacts message (used to update sidebar contacts)
+      if (parsed.contacts && Array.isArray(parsed.contacts)) {
+        console.log("[WebSocket] Setting recent chats from backend:", parsed.contacts);
+        // Reset the recent chats with the list received from the backend
+        setRecentChats(parsed.contacts);
+        // Optionally clear previous conversation history as you will rewrite it with the history message later
+        setMessages({});
+      }
+      // Handle a chat message (a new incoming message)
+      else if (parsed.type === "message" && parsed.from && parsed.message) {
         const { from, message } = parsed;
-
         setMessages((prev) => ({
           ...prev,
           [from]: [...(prev[from] || []), `${from}: ${message}`],
         }));
-
         setRecentChats((prev) =>
           prev.includes(from) ? prev : [from, ...prev]
         );
-
         if (!selectedChat) setSelectedChat(from);
-      } 
-      
-      // ✅ Handle initial contact list
-      else if (parsed.contacts && Array.isArray(parsed.contacts)) {
-        console.log("[WebSocket] Setting recent chats from backend:", parsed.contacts);
-        setRecentChats(parsed.contacts);
       }
-
+      // Handle a history message (rewrites all conversation history)
+      else if (parsed.type === "history" && Array.isArray(parsed.messages)) {
+        console.log("[WebSocket] Received message history:", parsed.messages);
+        // Assuming `parsed.messages` is an array of objects where each object is like:
+        // { sender: string, recipient: string, message: string, timestamp: string }
+        const localUsername = localStorage.getItem("username");
+        const conversationHistory = parsed.messages.reduce((acc: { [key: string]: string[] }, msg: any) => {
+          // Determine the conversation partner: if you are the sender then the partner is the recipient, otherwise vice versa.
+          const partner = msg.sender === localUsername ? msg.recipient : msg.sender;
+          if (!acc[partner]) {
+            acc[partner] = [];
+          }
+          acc[partner].push(`${msg.sender}: ${msg.message}`);
+          return acc;
+        }, {});
+  
+        // Replace all messages with the freshly received history
+        setMessages(conversationHistory);
+      }
     } catch (err) {
       console.error("Invalid WebSocket JSON:", parsed, err);
     }
   });
+  
 
   const sendMessage = (message: string) => {
     if (message.trim() !== "" && selectedChat && username) {
