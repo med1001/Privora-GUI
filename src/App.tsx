@@ -47,22 +47,28 @@ const Chat: React.FC<ChatProps> = ({ onLogout }) => {
       // Handle a history message (rewrites all conversation history)
       else if (parsed.type === "history" && Array.isArray(parsed.messages)) {
         console.log("[WebSocket] Received message history:", parsed.messages);
-        // Assuming `parsed.messages` is an array of objects where each object is like:
-        // { sender: string, recipient: string, message: string, timestamp: string }
         const localUsername = localStorage.getItem("username");
+      
         const conversationHistory = parsed.messages.reduce((acc: { [key: string]: string[] }, msg: any) => {
-          // Determine the conversation partner: if you are the sender then the partner is the recipient, otherwise vice versa.
+          // Determine the conversation partner: if you are the sender, then the partner is the recipient, otherwise vice versa.
           const partner = msg.sender === localUsername ? msg.recipient : msg.sender;
           if (!acc[partner]) {
             acc[partner] = [];
           }
+          // Push the message in order
           acc[partner].push(`${msg.sender}: ${msg.message}`);
           return acc;
         }, {});
-  
-        // Replace all messages with the freshly received history
+      
+        // Reverse each conversation array so the oldest message comes first
+        Object.keys(conversationHistory).forEach((partner) => {
+          conversationHistory[partner] = conversationHistory[partner].reverse();
+        });
+      
+        // Replace all messages with the freshly received history in correct order
         setMessages(conversationHistory);
       }
+      
     } catch (err) {
       console.error("Invalid WebSocket JSON:", parsed, err);
     }
