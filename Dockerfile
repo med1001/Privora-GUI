@@ -1,33 +1,18 @@
-# Step 1: Use Node.js base image (version 18 with Alpine for a small image size)
-FROM node:18-alpine AS builder
+# Étape 1 : Build de l'app React
+FROM node:18-alpine as build
 
-# Set the working directory inside the container
 WORKDIR /app
-
-# Install bash (optional, but useful for interactive use)
-RUN apk add --no-cache bash
-
-# Copy package.json and package-lock.json to install dependencies
 COPY package*.json ./
-
-# Install npm dependencies
-RUN npm install
-
-# Install additional dependencies for hot reloading (optional)
-RUN npm install -g nodemon
-# Copy the rest of the application files
+RUN npm install --omit=dev  # Plus léger que npm install
 COPY . .
+RUN npm run build
 
-# Debug: List files before running the build
-RUN ls -al /app
+# Étape 2 : Serveur statique léger
+FROM node:18-alpine
 
-# Step 2: Run the build process (will generate the build/ directory)
-#RUN npm run build
+WORKDIR /app
+RUN npm install -g serve
+COPY --from=build /app/build /app/build
 
-# Debug: List files after build to check if build is created
-#RUN ls -al /app/build
-# Expose the port React uses (default is 3000)
 EXPOSE 3000
-
-# Start the development server (with live reload)
-CMD ["npm", "start"]
+CMD ["serve", "-s", "build", "-l", "3000"]
