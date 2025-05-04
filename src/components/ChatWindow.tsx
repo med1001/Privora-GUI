@@ -64,7 +64,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
       setLoading(true);
       try {
-        const res = await fetch(`http://127.0.0.1:5000/search-users?q=${search}`, {
+        const res = await fetch(`http://13.48.55.91:5000/search-users?q=${search}`, {
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,

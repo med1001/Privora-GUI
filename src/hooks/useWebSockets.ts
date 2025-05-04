@@ -9,7 +9,7 @@ const useWebSocket = (
 
   useEffect(() => {
     if (token) {
-      const socketConnection = new WebSocket("ws://127.0.0.1:8080");
+      const socketConnection = new WebSocket("ws://13.48.55.91:8080");
 
       socketConnection.onopen = () => {
         console.log("[WebSocket] Connected");
