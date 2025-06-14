@@ -42,3 +42,6 @@ Thumbs.db
 *.pem
 *.crt
 *.key
+
+# Firebase configuration (DO NOT commit real config)
+src/firebase-config.ts
