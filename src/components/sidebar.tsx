@@ -88,37 +88,39 @@ const Sidebar: React.FC<SidebarProps> = ({
 
       <h1 className="text-2xl font-bold mb-4">Privora</h1>
 
-      {/* Search Input */}
-      <div className="relative mb-4">
-        <input
-          type="text"
-          placeholder="Search users..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full p-2 pl-9 rounded text-black"
-        />
-        <Search className="absolute left-3 top-2.5 text-gray-500" size={18} />
+      {/* Mobile Search ONLY */}
+      {isMobile && (
+        <div className="relative mb-4">
+          <input
+            type="text"
+            placeholder="Search users..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full p-2 pl-9 rounded text-black"
+          />
+          <Search className="absolute left-3 top-2.5 text-gray-500" size={18} />
 
-        {loading && !suggestions.length && (
-          <div className="absolute top-12 left-0 w-full bg-white shadow-lg rounded-lg p-2 text-center text-black">
-            <div className="w-6 h-6 border-t-2 border-blue-500 rounded-full animate-spin mx-auto"></div>
-          </div>
-        )}
+          {loading && !suggestions.length && (
+            <div className="absolute top-12 left-0 w-full bg-white shadow-lg rounded-lg p-2 text-center text-black">
+              <div className="w-6 h-6 border-t-2 border-blue-500 rounded-full animate-spin mx-auto"></div>
+            </div>
+          )}
 
-        {suggestions.length > 0 && (
-          <div className="absolute top-12 left-0 w-full bg-white shadow-lg rounded-lg max-h-60 overflow-y-auto z-20 text-black">
-            {suggestions.map((user) => (
-              <div
-                key={user.userId}
-                className="p-2 cursor-pointer hover:bg-gray-100"
-                onClick={() => handleSuggestionClick(user)}
-              >
-                {user.displayName}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+          {suggestions.length > 0 && (
+            <div className="absolute top-12 left-0 w-full bg-white shadow-lg rounded-lg max-h-60 overflow-y-auto z-20 text-black">
+              {suggestions.map((user) => (
+                <div
+                  key={user.userId}
+                  className="p-2 cursor-pointer hover:bg-gray-100"
+                  onClick={() => handleSuggestionClick(user)}
+                >
+                  {user.displayName}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       <h2 className="text-sm font-semibold mb-2">Recent Chats</h2>
 
