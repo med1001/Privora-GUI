@@ -27,8 +27,8 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
 
       const token = await userCredential.user.getIdToken();
       localStorage.setItem("token", token);
-      localStorage.setItem("userId", userCredential.user.email || userCredential.user.uid); // Use this as the unique ID
-      localStorage.setItem("displayName", userCredential.user.displayName || userCredential.user.email || ""); // Optional, for UI display
+      localStorage.setItem("userId", userCredential.user.email || userCredential.user.uid);
+      localStorage.setItem("displayName", userCredential.user.displayName || userCredential.user.email || "");
 
       onLogin(token);
       navigate("/chat");
@@ -39,16 +39,19 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center h-screen bg-gray-100">
-      <form onSubmit={handleLogin} className="bg-white p-6 rounded shadow-md w-80">
-        <h2 className="text-xl font-bold mb-4">Login</h2>
-        {error && <p className="text-red-500 mb-2">{error}</p>}
+    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 px-4">
+      <form
+        onSubmit={handleLogin}
+        className="w-full max-w-sm bg-white p-6 md:p-8 rounded-lg shadow-lg space-y-4"
+      >
+        <h2 className="text-2xl font-bold text-center">Login</h2>
+        {error && <p className="text-red-500 text-sm">{error}</p>}
         <input
           type="email"
           placeholder="Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="w-full p-2 border rounded mb-2"
+          className="w-full p-3 border border-gray-300 rounded focus:outline-none focus:ring focus:ring-blue-300"
           required
         />
         <input
@@ -56,20 +59,35 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
           placeholder="Password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="w-full p-2 border rounded mb-2"
+          className="w-full p-3 border border-gray-300 rounded focus:outline-none focus:ring focus:ring-blue-300"
           required
         />
-        <button type="submit" className="w-full bg-blue-600 text-white p-2 rounded hover:bg-blue-800">
+        <button
+          type="submit"
+          className="w-full bg-blue-600 text-white p-3 rounded hover:bg-blue-700 transition"
+        >
           Login
         </button>
-
-        <p className="mt-4 text-sm text-center">
+        <p className="text-sm text-center">
           Don't have an account?{" "}
           <Link to="/register" className="text-blue-500 hover:underline">
             Register here
           </Link>
         </p>
       </form>
+
+      {/* Made with love + GitHub link */}
+      <p className="mt-4 text-gray-500 text-xs text-center">
+        Made with ❤️ by MedBenMoussa &nbsp;|&nbsp;
+        <a
+          href="https://github.com/med1001/Privora" 
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-blue-500 hover:underline"
+        >
+          View on GitHub
+        </a>
+      </p>
     </div>
   );
 };

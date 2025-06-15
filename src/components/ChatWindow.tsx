@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Search, LogOut, Settings } from "lucide-react";
+import { Search, LogOut, Settings, Menu } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -23,7 +23,9 @@ interface ChatWindowProps {
   onSendMessage: (message: string, recipientUserId: string) => void;
   onLogout: () => void;
   onSelectChat: (chatId: string, displayName?: string) => void;
-  recentChats: RecentChat[]; // NEW PROP for display names
+  recentChats: RecentChat[];
+  onToggleSidebar?: () => void; // For mobile drawer toggle
+  isMobile?: boolean; // NEW: tell if mobile
 }
 
 const ChatWindow: React.FC<ChatWindowProps> = ({
@@ -32,7 +34,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   onSendMessage,
   onLogout,
   onSelectChat,
-  recentChats, // NEW PROP
+  recentChats,
+  onToggleSidebar,
+  isMobile = false,
 }) => {
   const [message, setMessage] = useState("");
   const [search, setSearch] = useState("");
@@ -43,7 +47,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const displayName = localStorage.getItem("displayName") || "User";
   const userId = localStorage.getItem("userId");
 
-  // Map selectedChat (userId) to displayName
   const selectedChatDisplayName =
     recentChats.find((c) => c.userId === selectedChat)?.displayName ||
     selectedChat ||
@@ -90,7 +93,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   }, [search]);
 
   const handleSuggestionClick = (user: UserSuggestion) => {
-    console.log("User selected:", user.userId, user.displayName);
     onSelectChat(user.userId, user.displayName);
     setSearch("");
     setSuggestions([]);
@@ -104,79 +106,92 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   };
 
   return (
-    <div className="flex flex-col w-3/4 bg-white shadow-md">
+    <div className="flex flex-col h-full bg-white">
       {/* Header */}
-      <div className="bg-blue-700 text-white p-4 flex items-center justify-between">
-        <span className="text-lg font-semibold truncate max-w-xs">
-          {selectedChatDisplayName}
-        </span>
-
-        {/* Search */}
-        <div className="relative w-64">
-          <input
-            type="text"
-            placeholder="Search for users..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full p-2 pl-10 rounded-lg text-black border border-gray-300"
-          />
-          <Search className="absolute left-3 top-2.5 text-gray-500" size={18} />
-
-          {loading && !suggestions.length && (
-            <div className="absolute top-12 left-0 w-full bg-white shadow-lg rounded-lg max-h-60 flex items-center justify-center">
-              <div className="w-8 h-8 border-t-4 border-blue-500 rounded-full animate-spin"></div>
-            </div>
-          )}
-
-          {suggestions.length > 0 && (
-            <div className="absolute top-12 left-0 w-full bg-white shadow-lg rounded-lg max-h-60 overflow-y-auto z-10">
-              {suggestions.map((user) => (
-                <div
-                  key={user.userId}
-                  className="p-2 cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleSuggestionClick(user)}
-                >
-                  <span className="text-black">{user.displayName}</span>
-                </div>
-              ))}
-            </div>
-          )}
+      <div className="bg-blue-700 text-white p-3 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          {/* Mobile Menu Button */}
+          <button
+            onClick={onToggleSidebar}
+            className="md:hidden p-1 rounded hover:bg-blue-600"
+          >
+            <Menu size={24} />
+          </button>
+          <span className="text-lg font-semibold truncate">
+            {selectedChatDisplayName}
+          </span>
         </div>
+
+        {/* Desktop Search ONLY */}
+        {!isMobile && (
+          <div className="relative w-40 sm:w-64 hidden sm:block">
+            <input
+              type="text"
+              placeholder="Search users..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full p-2 pl-9 rounded-lg text-black border border-gray-300"
+            />
+            <Search className="absolute left-3 top-2.5 text-gray-500" size={18} />
+
+            {loading && !suggestions.length && (
+              <div className="absolute top-12 left-0 w-full bg-white shadow-lg rounded-lg p-2 text-center">
+                <div className="w-6 h-6 border-t-2 border-blue-500 rounded-full animate-spin mx-auto"></div>
+              </div>
+            )}
+            {suggestions.length > 0 && (
+              <div className="absolute top-12 left-0 w-full bg-white shadow-lg rounded-lg max-h-60 overflow-y-auto z-20">
+                {suggestions.map((user) => (
+                  <div
+                    key={user.userId}
+                    className="p-2 cursor-pointer hover:bg-gray-100"
+                    onClick={() => handleSuggestionClick(user)}
+                  >
+                    <span className="text-black">{user.displayName}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
-              className="w-10 h-10 bg-gray-300 text-black rounded-full flex items-center justify-center font-semibold cursor-pointer hover:bg-gray-400"
+              className="w-10 h-10 bg-gray-300 text-black rounded-full flex items-center justify-center font-semibold"
               aria-label="Profile menu"
             >
-              {(displayName.split(" ")[0][0] + (displayName.split(" ")[1]?.[0] || "")).toUpperCase()}
+              {(displayName.split(" ")[0][0] +
+                (displayName.split(" ")[1]?.[0] || "")
+              ).toUpperCase()}
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="bg-white shadow-md rounded-lg p-2 w-40">
+          <DropdownMenuContent className="bg-white shadow-md rounded-lg p-2 w-40 z-30">
             <DropdownMenuItem onClick={() => alert("Settings clicked!")}>
-              <Settings className="w-5 h-5 mr-2" /> Settings
+              <Settings className="w-4 h-4 mr-2" /> Settings
             </DropdownMenuItem>
             <DropdownMenuItem onClick={onLogout} className="text-red-600">
-              <LogOut className="w-5 h-5 mr-2" /> Log out
+              <LogOut className="w-4 h-4 mr-2" /> Log out
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
 
       {/* Messages */}
-      <div className="flex-grow p-4 overflow-y-auto space-y-3" ref={scrollRef}>
+      <div
+        className="flex-grow p-3 overflow-y-auto space-y-3"
+        ref={scrollRef}
+      >
         {messages.map((msg, idx) => {
           const [sender, ...rest] = msg.split(": ");
-          const isOwnMessage = sender === userId;
-          const key = `${msg}-${idx}`;
-
+          const isOwn = sender === userId;
           return (
             <div
-              key={key}
-              className={`p-3 rounded-lg max-w-xs ${
-                isOwnMessage
-                  ? "bg-blue-500 text-white self-end ml-auto"
-                  : "bg-gray-200 text-black self-start mr-auto"
+              key={idx}
+              className={`p-2 rounded-lg max-w-xs ${
+                isOwn
+                  ? "bg-blue-600 text-white ml-auto"
+                  : "bg-gray-200 text-black mr-auto"
               }`}
             >
               {rest.join(": ")}
@@ -185,23 +200,24 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         })}
       </div>
 
-      {/* Message Input */}
-      <div className="p-4 border-t bg-gray-100 flex items-center">
-        <input
-          type="text"
-          className="flex-grow p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          placeholder="Type a message..."
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && send()}
-        />
-        <button
-          onClick={send}
-          className="ml-3 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-800 transition"
-        >
-          Send
-        </button>
-      </div>
+      {/* Input */}
+      <div className="p-3 border-t bg-gray-100 flex items-center gap-2">
+  <input
+    type="text"
+    className="flex-grow min-w-0 p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+    placeholder="Type a message..."
+    value={message}
+    onChange={(e) => setMessage(e.target.value)}
+    onKeyDown={(e) => e.key === "Enter" && send()}
+  />
+  <button
+    onClick={send}
+    className="flex-shrink-0 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-800 transition"
+  >
+    Send
+  </button>
+</div>
+
     </div>
   );
 };
