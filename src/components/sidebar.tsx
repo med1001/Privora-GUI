@@ -26,6 +26,9 @@ const Sidebar: React.FC<SidebarProps> = ({
   const [suggestions, setSuggestions] = useState<UserSuggestion[]>([]);
   const [loading, setLoading] = useState(false);
 
+  // Read API base URL from env variable
+  const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:8080";
+
   useEffect(() => {
     if (!search.trim()) {
       setSuggestions([]);
@@ -39,7 +42,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       setLoading(true);
       try {
         const res = await fetch(
-          `http://localhost:8080/search-users?q=${encodeURIComponent(search)}`,
+          `${API_BASE_URL}/search-users?q=${encodeURIComponent(search)}`,
           {
             headers: {
               "Content-Type": "application/json",
@@ -58,7 +61,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 
     const timeout = setTimeout(fetchUsers, 300);
     return () => clearTimeout(timeout);
-  }, [search]);
+  }, [search, API_BASE_URL]);
 
   const handleSuggestionClick = (user: UserSuggestion) => {
     onSelect(user.userId, user.displayName);

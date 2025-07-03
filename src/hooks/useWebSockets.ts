@@ -9,7 +9,10 @@ const useWebSocket = (
 
   useEffect(() => {
     if (token) {
-      const socketConnection = new WebSocket("ws://localhost:8080/ws");
+      // Use environment variable or fallback to localhost
+      const wsUrl = process.env.REACT_APP_WS_URL || "ws://localhost:8080/ws";
+
+      const socketConnection = new WebSocket(wsUrl);
 
       socketConnection.onopen = () => {
         console.log("[WebSocket] Connected");
@@ -60,7 +63,7 @@ const useWebSocket = (
     if (socket && socket.readyState === WebSocket.OPEN) {
       const payload = {
         type: "message",
-        to: recipientEmail, // ✅ now clearly using userId (email or backend-unique identifier)
+        to: recipientEmail,
         message,
         fromDisplayName,
       };
