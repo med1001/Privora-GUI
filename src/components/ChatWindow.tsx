@@ -52,6 +52,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     selectedChat ||
     "No user selected";
 
+  // Read API base URL from environment variables
+  const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:8080";
+
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -71,7 +74,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       setLoading(true);
       try {
         const res = await fetch(
-          `http://localhost:8080/search-users?q=${encodeURIComponent(search)}`,
+          `${API_BASE_URL}/search-users?q=${encodeURIComponent(search)}`,
           {
             headers: {
               "Content-Type": "application/json",
@@ -90,7 +93,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
     const timeout = setTimeout(fetchUsers, 300);
     return () => clearTimeout(timeout);
-  }, [search]);
+  }, [search, API_BASE_URL]);
 
   const handleSuggestionClick = (user: UserSuggestion) => {
     onSelectChat(user.userId, user.displayName);
@@ -202,22 +205,21 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
       {/* Input */}
       <div className="p-3 border-t bg-gray-100 flex items-center gap-2">
-  <input
-    type="text"
-    className="flex-grow min-w-0 p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-    placeholder="Type a message..."
-    value={message}
-    onChange={(e) => setMessage(e.target.value)}
-    onKeyDown={(e) => e.key === "Enter" && send()}
-  />
-  <button
-    onClick={send}
-    className="flex-shrink-0 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-800 transition"
-  >
-    Send
-  </button>
-</div>
-
+        <input
+          type="text"
+          className="flex-grow min-w-0 p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          placeholder="Type a message..."
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && send()}
+        />
+        <button
+          onClick={send}
+          className="flex-shrink-0 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-800 transition"
+        >
+          Send
+        </button>
+      </div>
     </div>
   );
 };
