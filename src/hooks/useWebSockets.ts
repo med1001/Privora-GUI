@@ -10,7 +10,9 @@ const useWebSocket = (
   useEffect(() => {
     if (token) {
       // Use environment variable or fallback to localhost
-      const wsUrl = process.env.REACT_APP_WS_URL || "ws://localhost:8080/ws";
+      const wsUrl =
+      process.env.REACT_APP_WS_URL ||
+      (window.location.protocol === "https:" ? "wss://" : "ws://") + window.location.host + "/ws";
 
       const socketConnection = new WebSocket(wsUrl);
 
