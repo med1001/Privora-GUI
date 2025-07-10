@@ -4,7 +4,7 @@
 **Privora** is a secure, privacy-focused chat application.  
 This repository contains the **frontend user interface**, built with **React**, **TypeScript**, and **Tailwind CSS**, and designed to run inside a Docker container.
 
-The backend is a hybrid system built in **C** and **Python Flask** (managed separately).
+
 
 ---
 
@@ -32,6 +32,36 @@ Then navigate into the project directory:
 ```bash
 cd privora-gui
 ```
+
+---
+
+## ⚙️ Environment Configuration
+
+Before running the project, you need to create a `.env` file in the root directory.
+
+You can start by copying the provided template:
+
+```bash
+cp .env.example .env
+```
+Then edit the .env file to match your environment.
+
+These variables allow the app to connect to your desired API and WebSocket server, whether you're running locally or in production.
+
+### Firebase Configuration Required
+
+Before building the project (especially in Docker), you must create a Firebase config file for authentication to work.
+
+Start by copying the example config:
+
+    cp src/firebase-config.example.ts src/firebase-config.ts
+
+Then edit `src/firebase-config.ts` and replace the placeholder values with your actual Firebase credentials:
+
+You can find them in:  
+Firebase Console → Project Settings → General → Your apps → SDK setup and configuration
+
+Important: Never commit your real `firebase-config.ts` to version control. It's already listed in `.gitignore` for safety.
 
 ---
 
@@ -90,7 +120,7 @@ Privora-GUI/
 ## 🔙 Backend Repository
 
 You can find the backend source code here:  
-👉 [Privora Backend (C + Flask)](https://github.com/med1001/Privora)
+👉 [Privora Backend](https://github.com/med1001/Privora)
 
 ---
 
@@ -102,20 +132,9 @@ You can find the backend source code here:
 
 ### 💬 Chat Interface
 
-![Chat Screenshot](screenshots/chat.png)
+![Chat Screenshot](screenshots/chatwindow.png)
 
 > To be done : place screenshots in a `screenshots/` folder inside the root directory and name them `login.png` and `chat.png`.
-
----
-
-## 🛠️ Backend Overview
-
-The backend for Privora is built separately using:
-
-- 🐍 Python Flask — handles **authentication** and **account creation**
-- ⚙️ C — powers the **core messaging engine**
-
-> This frontend communicates with the backend ** via WebSockets** .
 
 ---
 
