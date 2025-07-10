@@ -76,7 +76,7 @@ docker build -t privora-gui .
 ### 2. Run the Container
 
 ```bash
-docker run -p 3000:3000 privora-gui
+docker run -p 3000:80 privora-gui
 ```
 
 Then open your browser at:  
