@@ -25,7 +25,7 @@ const Register = () => {
       await sendEmailVerification(userCredential.user);
 
       setMessage("✅ Inscription réussie ! Vérifie ton email pour valider ton compte.");
-      setTimeout(() => navigate("/login"), 3000);
+  //    setTimeout(() => navigate("/login"), 3000);
     } catch (error: any) {
       const firebaseError = error.message || "Erreur inconnue.";
       setMessage(`❌ ${firebaseError}`);
