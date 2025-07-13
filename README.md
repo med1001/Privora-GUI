@@ -140,9 +140,8 @@ You can find the backend source code here:
 
 ### 💬 Chat Interface
 
-![Chat Screenshot](screenshots/chatwindow.png)
+![Chat Screenshot](screenshots/chatwindow.PNG)
 
-> To be done : place screenshots in a `screenshots/` folder inside the root directory and name them `login.png` and `chat.png`.
 
 ---
 
