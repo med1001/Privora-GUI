@@ -54,6 +54,8 @@ If you're running the backend locally (e.g., with `localhost:8000`), your `.env`
 REACT_APP_API_URL=http://localhost:8000
 REACT_APP_WS_URL=ws://localhost:8000/ws/
 
+```
+
 These variables allow the app to connect to your desired API and WebSocket server, whether you're running locally or in production.
 
 ### Firebase Configuration Required
@@ -142,7 +144,6 @@ You can find the backend source code here:
 
 ![Chat Screenshot](screenshots/chatwindow.png)
 
-> To be done : place screenshots in a `screenshots/` folder inside the root directory and name them `login.png` and `chat.png`.
 
 ---
 
