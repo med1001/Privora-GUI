@@ -53,7 +53,9 @@ If you're running the backend locally (e.g., with `localhost:8000`), your `.env`
 ```env
 REACT_APP_API_URL=http://localhost:8000
 REACT_APP_WS_URL=ws://localhost:8000/ws/
+
 ```
+
 These variables allow the app to connect to your desired API and WebSocket server, whether you're running locally or in production.
 
 ### Firebase Configuration Required
