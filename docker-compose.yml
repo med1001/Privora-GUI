@@ -1,0 +1,16 @@
+version: "3.8"
+
+services:
+  frontend:
+    container_name: frontend
+    build:
+      context: .
+      dockerfile: Dockerfile.dev  # assuming you save the above as Dockerfile.dev
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./:/app  # Mount current directory for live reload
+      - /app/node_modules  # Prevent node_modules overwrite by host
+    environment:
+      - CHOKIDAR_USEPOLLING=true  # Fixes some file watching issues in containers
+    restart: unless-stopped
