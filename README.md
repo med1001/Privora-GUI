@@ -30,7 +30,7 @@ git clone https://github.com/med1001/Privora-GUI
 Then navigate into the project directory:
 
 ```bash
-cd privora-gui
+cd Privora-GUI
 ```
 
 ---
