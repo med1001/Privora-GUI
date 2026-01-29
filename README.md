@@ -154,7 +154,15 @@ This method uses the Firebase CLI to retrieve your configuration automatically.
    ```bash
    npx firebase-tools apps:sdkconfig web --project my-project-123
    ```
-   This will output your Firebase configuration. Copy it into `src/firebase-config.ts`.
+   This will output your Firebase configuration.
+   
+   then
+   
+   ```bash
+   cp src/firebase-config.example.ts src/firebase-config.ts
+   ```
+   
+   and paste the firebase credentials displayed by the npx firebase-tools command correctly in the firebase-config.ts 
 
 ##### Option B: Run in Docker (No Host Pollution)
 
