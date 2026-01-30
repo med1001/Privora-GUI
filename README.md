@@ -274,7 +274,7 @@ docker build -f Dockerfile.dev -t privora-gui-dev .
 
 ```bash
 docker run \
-  -p 3000:80 \
+  -p 3000:3000 \
   -v ${PWD}:/app \
   -v /app/node_modules \
   -e CHOKIDAR_USEPOLLING=true \
@@ -282,7 +282,7 @@ docker run \
 ```
 
 Then open your browser at:  
-👉 http://localhost:80
+👉 http://localhost:3000
 
 ---
 
