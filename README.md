@@ -1,216 +1,320 @@
+<div align="center">
+
 # 🛡️ Privora-GUI
 
-**Privora** is a secure, privacy-focused chat application.  
-This repository contains the **frontend user interface**, built with **React**, **TypeScript**, and **Tailwind CSS**, and designed to run inside a Docker container.
+### Frontend Interface for Privora Chat Application
+
+**Built with React • TypeScript • Tailwind CSS • Docker**
+
+> 💡 **Note:** This is the **frontend (GUI)** repository. For the backend server, see [Privora Backend](https://github.com/med1001/Privora)
+
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+[![React](https://img.shields.io/badge/React-18+-61DAFB?logo=react&logoColor=white)](https://reactjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5+-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind-3+-38B2AC?logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
+
+[Features](#-features) •
+[Prerequisites](#-prerequisites) •
+[Quick Start](#-quick-start) •
+[Documentation](#-documentation) •
+[Screenshots](#-screenshots) •
+[License](#-license)
 
 ---
+
+</div>
+
+<br>
 
 ## 📑 Table of Contents
 
-- [About the Project](#-about-the-project)
-- [Prerequisites](#-prerequisites)
-- [Clone the Repository](#-clone-the-repository)
-- [Environment Configuration](#️-environment-configuration)
-  - [Firebase Configuration](#-firebase-configuration-required)
-- [Getting Started with Docker](#-getting-started-with-docker)
-- [Live Coding / Dev Mode](#-live-coding--dev-mode)
-- [Project Structure](#️-project-structure)
-- [Backend Repository](#-backend-repository)
-- [Screenshots](#️-screenshots)
-- [License](#-license)
+- [✨ Features](#-features)
+- [🔧 Prerequisites](#-prerequisites)
+- [🚀 Quick Start](#-quick-start)
+  - [Clone Repository](#1-clone-the-repository)
+  - [Environment Setup](#2-environment-configuration)
+  - [Firebase Configuration](#3-firebase-configuration)
+  - [Docker Setup](#4-build--run-with-docker)
+- [💻 Development Mode](#-development-mode-linux-only)
+- [🗂️ Project Structure](#️-project-structure)
+- [📚 Documentation](#-documentation)
+- [🖼️ Screenshots](#️-screenshots)
+- [🤝 Contributing](#-contributing)
+- [📄 License](#-license)
+- [⭐ Support](#-support-the-project)
+
+<br>
 
 ---
 
-## 📦 About the Project
+<br>
 
-This is the graphical user interface (GUI) for the Privora chat app, focusing on:
+## ✨ Features
 
-- 💬 Secure messaging
-- ⚛️ Modern UI with React
-- 🎨 Tailwind-powered styling
-- 🐳 Seamless Docker-based development
+> 🎨 **This repository contains the frontend interface only**
+> 
+> For full functionality, you need to run the [Privora Backend](https://github.com/med1001/Privora) server.
+
+<table>
+<tr>
+<td width="50%">
+
+### 🖥️ Frontend UI
+- Modern React interface with TypeScript
+- Real-time chat interface
+- User search and discovery
+- Responsive design with Tailwind CSS
+
+</td>
+<td width="50%">
+
+### 🔐 Authentication
+- Firebase Authentication integration
+- Secure login/signup flows
+- Token-based auth with backend
+- Session management
+
+</td>
+</tr>
+<tr>
+<td width="50%">
+
+### 💬 Real-Time Messaging
+- WebSocket client for live chat
+- Instant message delivery
+- Typing indicators
+- Message history display
+
+</td>
+<td width="50%">
+
+### 🐳 Docker Ready
+- Containerized frontend app
+- Development mode with hot reload
+- Production-ready Nginx setup
+- Easy deployment
+
+</td>
+</tr>
+</table>
+
+<br>
+
+**🔌 Backend Required:**
+This frontend connects to the backend via:
+- **REST API** for user search (`/search-users`)
+- **WebSocket** for real-time messaging (`/ws`)
+- **Firebase** for authentication
+
+**Configuration:**
+- Development: `http://` and `ws://` (localhost only)
+- **Production: `https://` and `wss://` (mandatory for security)**
+
+Make sure to configure `REACT_APP_API_URL` and `REACT_APP_WS_URL` to point to your running backend server.
+
+<br>
 
 ---
+
+<br>
+
+## 🏗️ Architecture Overview
+
+Privora is a **two-part application**:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     Privora Chat System                      │
+├──────────────────────────────┬──────────────────────────────┤
+│   Frontend (This Repo)       │   Backend (Separate Repo)    │
+│   🎨 Privora-GUI             │   ⚙️ Privora                 │
+├──────────────────────────────┼──────────────────────────────┤
+│ • React + TypeScript         │ • REST API Server            │
+│ • User Interface             │ • WebSocket Server           │
+│ • Firebase Auth Client       │ • Firebase Auth Validation   │
+│ • WebSocket Client           │ • Message Routing            │
+│ • Docker Container           │ • Database Storage           │
+└──────────────────────────────┴──────────────────────────────┘
+              ↓                            ↓
+    [Port 3000 (dev)]              [Port 8000 (dev)]
+    [Port 80/443 (prod)]           [Port 80/443 (prod)]
+              ↓                            ↓
+         Browser ←──── HTTPS/WSS (prod) ───┤
+                  └──── HTTP/WS (dev) ─────┘
+```
+
+**🔗 Communication:**
+
+| Environment | REST API | WebSocket | Security |
+|-------------|----------|-----------|----------|
+| **Development** | `http://localhost:8000` | `ws://localhost:8000/ws` | ⚠️ No encryption |
+| **Production** | `https://your-domain.com` | `wss://your-domain.com/ws` | ✅ TLS/SSL encrypted |
+
+> ⚠️ **Important:** 
+> - Both frontend and backend must be running for the app to work properly
+> - **Production must use HTTPS and WSS** for secure communication
+
+<br>
+
+---
+
+<br>
 
 ## 🔧 Prerequisites
 
-Before you begin, ensure you have:
+Before you begin, ensure you have the following installed:
 
-- **Git** - For cloning the repository
-- **Docker** - For running the containerized app
-- **Node.js** (v16+) - Optional, only needed for Firebase CLI or local development
-- **Firebase Account** - Required for authentication features
+| Tool | Version | Purpose | Download |
+|------|---------|---------|----------|
+| **Git** | Latest | Clone repository | [Download](https://git-scm.com/download/win) |
+| **Docker** | Latest | Run containerized app | [Download](https://www.docker.com/products/docker-desktop) |
+| **Node.js** | v16+ | *Optional* - Firebase CLI | [Download](https://nodejs.org/) |
+| **Firebase Account** | - | Authentication | [Sign Up](https://firebase.google.com/) |
+
+> 💡 **Note:** Node.js is optional if you use Docker for Firebase CLI (see [Method 2B](#option-b-run-in-docker-no-host-pollution))
+
+<br>
 
 ---
 
-## 🔄 Clone the Repository
+<br>
 
-To clone the project to your local machine, run the following command:
+## 🚀 Quick Start
+
+### **1.** Clone the Repository
 
 ```bash
 git clone https://github.com/med1001/Privora-GUI
-```
-
-Then navigate into the project directory:
-
-```bash
 cd Privora-GUI
 ```
 
----
+<br>
 
-## ⚙️ Environment Configuration
+### **2.** Environment Configuration
 
-Before running the project, you need to create a `.env` file in the root directory.
-
-You can start by copying the provided template:
+Create your environment file:
 
 ```bash
 cp .env.example .env
 ```
 
-> ⚠️ **Note:** If `.env.example` doesn't exist in the repository, create a `.env` file manually with the variables below.
+> ⚠️ If `.env.example` doesn't exist, create `.env` manually
 
-Then edit the `.env` file to match your environment.
+<br>
 
-#### Example for Local Development
+**Edit `.env` with your configuration:**
 
-If you're running the backend locally (e.g., with `localhost:8000`), your `.env` file might look like this:
-
+**For Development (Local):**
 ```env
+# Backend API Configuration (Development)
 REACT_APP_API_URL=http://localhost:8000
 REACT_APP_WS_URL=ws://localhost:8000/ws/
 ```
 
-These variables allow the app to connect to your desired API and WebSocket server, whether you're running locally or in production.
+**For Production:**
+```env
+# Backend API Configuration (Production - Must use HTTPS/WSS)
+REACT_APP_API_URL=https://api.yourdomain.com
+REACT_APP_WS_URL=wss://api.yourdomain.com/ws/
+```
+
+> ⚠️ **Security Warning:** Production environments **MUST** use HTTPS and WSS (WebSocket Secure) for encrypted communication.
+
+<details>
+<summary><b>📝 Environment Variables Explained</b></summary>
+
+<br>
+
+| Variable | Description | Development | Production |
+|----------|-------------|-------------|------------|
+| `REACT_APP_API_URL` | Backend REST API endpoint | `http://localhost:8000` | `https://api.yourdomain.com` |
+| `REACT_APP_WS_URL` | WebSocket server URL | `ws://localhost:8000/ws/` | `wss://api.yourdomain.com/ws/` |
+
+**Protocol Requirements:**
+- **Development:** `http://` and `ws://` (unencrypted, acceptable for localhost only)
+- **Production:** `https://` and `wss://` (TLS/SSL encrypted, mandatory for security)
+
+</details>
+
+<br>
+
+### **3.** Firebase Configuration
+
+> 🔥 **Required:** Firebase configuration is mandatory for authentication
+
+<br>
+
+Choose your preferred setup method:
+
+<table>
+<tr>
+<th width="50%">📋 Method 1: Manual (Recommended)</th>
+<th width="50%">🤖 Method 2: Automatic (CLI)</th>
+</tr>
+<tr>
+<td valign="top">
+
+**Best for:** First-time users
+
+**Steps:**
+1. Copy example config
+2. Get credentials from Firebase Console
+3. Paste into config file
+
+[See detailed steps →](#method-1-manual-configuration-recommended-for-beginners)
+
+</td>
+<td valign="top">
+
+**Best for:** Quick setup
+
+**Steps:**
+1. Run Firebase CLI
+2. Authenticate
+3. Retrieve config automatically
+
+[See detailed steps →](#method-2-using-firebase-cli-terminal-way)
+
+</td>
+</tr>
+</table>
+
+<br>
 
 ---
 
-### 🔥 Firebase Configuration Required
+#### **Method 1:** Manual Configuration (Recommended for Beginners)
 
-Before building the project (especially in Docker), you must create a Firebase config file for authentication to work.
+<details open>
+<summary><b>Click to expand detailed steps</b></summary>
 
-#### Prerequisites
+<br>
 
-- **Node.js** (v16 or higher) - Required to run `npx` commands
-- A **Firebase project** with **Authentication** enabled
-- A **Web app** registered in your Firebase project
+**Step 1:** Copy the example configuration
 
-> 💡 **Don't want to install Node.js on your host?** You can run these commands inside a Node Docker container (see below).
+```bash
+cp src/firebase-config.example.ts src/firebase-config.ts
+```
 
----
+<br>
 
-#### Method 1: Manual Configuration (Recommended for Beginners)
+**Step 2:** Get your Firebase credentials
 
-1. **Copy the example config:**
-   ```bash
-   cp src/firebase-config.example.ts src/firebase-config.ts
-   ```
+1. Go to [Firebase Console](https://console.firebase.google.com/) 🔗
+2. Select your project (or create a new one)
+3. Navigate to: **⚙️ Project Settings** → **General** → **Your apps**
+4. If you don't have a web app:
+   - Click **Add app**
+   - Select **Web** (`</>` icon)
+5. Scroll to **SDK setup and configuration**
+6. Copy the `firebaseConfig` object
 
-2. **Get your Firebase credentials manually:**
-   - Go to [Firebase Console](https://console.firebase.google.com/)
-   - Select your project (or create one)
-   - Navigate to: **Project Settings → General → Your apps**
-   - If you don't have a web app, click **Add app** and select **Web** (</> icon)
-   - Scroll to **SDK setup and configuration**
-   - Copy the configuration object
+<br>
 
-3. **Paste the credentials** into `src/firebase-config.ts`
+**Step 3:** Paste credentials into `src/firebase-config.ts`
 
-4. **Enable Firebase Authentication:**
-   - In Firebase Console, go to **Authentication → Sign-in method**
-   - Enable your desired providers (Email/Password, Google, etc.)
-
----
-
-#### Method 2: Using Firebase CLI (Terminal Way)
-
-This method uses the Firebase CLI to retrieve your configuration automatically.
-
-##### Option A: Run on Host Machine
-
-1. **Install Node.js** (if not already installed):
-   - [Download Node.js](https://nodejs.org/) (v16 or higher)
-
-2. **Login to Firebase:**
-   ```bash
-   npx firebase-tools login --no-localhost
-   ```
-   This will open your browser for authentication.
-
-3. **List your Firebase projects:**
-   ```bash
-   npx firebase-tools projects:list
-   ```
-   Note your project ID (e.g., `my-project-123`).
-
-4. **List your web apps:**
-   ```bash
-   npx firebase-tools apps:list --project my-project-123
-   ```
-   Make sure you have a web app registered. If not, create one in the Firebase Console.
-
-5. **Get SDK configuration:**
-   ```bash
-   npx firebase-tools apps:sdkconfig web --project my-project-123
-   ```
-   This will output your Firebase configuration.
-   
-   then
-   
-   ```bash
-   cp src/firebase-config.example.ts src/firebase-config.ts
-   ```
-   
-   and paste the firebase credentials displayed by the npx firebase-tools command correctly in the firebase-config.ts 
-
-##### Option B: Run in Docker (No Host Pollution)
-
-If you don't want to install Node.js on your host machine, run the commands in a temporary Node container:
-
-1. **Start an interactive Node container:**
-   ```bash
-   docker run -it --rm -v ${PWD}:/app -w /app node:18 bash
-   ```
-
-2. **Inside the container, run the Firebase commands:**
-   ```bash
-   npx firebase-tools login --no-localhost
-   npx firebase-tools projects:list
-   npx firebase-tools apps:list --project my-project-123
-   npx firebase-tools apps:sdkconfig web --project my-project-123
-   ```
-
-3. **Copy the output** to your clipboard and paste it into `src/firebase-config.ts` on your host machine (outside the container).
-
-4. **Exit the container:**
-   ```bash
-   exit
-   ```
-
----
-
-#### ⚠️ Important Security Notes
-
-- **Never commit** your real `firebase-config.ts` to version control
-- The file is already listed in `.gitignore` for safety
-- Keep your Firebase API keys secure (though they're meant for client-side use, restrict them in Firebase Console)
-
-#### 🔒 Restrict Your Firebase API Key (Recommended)
-
-To prevent unauthorized use:
-
-1. Go to [Google Cloud Console](https://console.cloud.google.com/)
-2. Navigate to **APIs & Services → Credentials**
-3. Find your Firebase API key
-4. Click **Edit** and add **Application restrictions** and **API restrictions**
-5. Limit to your domain(s) and necessary Firebase APIs
-
----
-
-#### Verify Your Setup
-
-After configuration, your `src/firebase-config.ts` should look like:
+Your file should look like this:
 
 ```typescript
 import { initializeApp } from 'firebase/app';
@@ -229,48 +333,223 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 ```
 
-Now you're ready to build and run the project! 🚀
+<br>
+
+**Step 4:** Enable Firebase Authentication
+
+1. In Firebase Console, go to **🔐 Authentication** → **Sign-in method**
+2. Enable your desired providers:
+   - ✉️ Email/Password
+   - 🔑 Google
+   - 📱 Other providers as needed
+
+<br>
+
+> ✅ **You're all set!** Skip to [Step 4: Build & Run](#4-build--run-with-docker)
+
+</details>
+
+<br>
 
 ---
 
-## 🐳 Getting Started with Docker
+#### **Method 2:** Using Firebase CLI (Terminal Way)
 
-### 1. Build the Docker Image
+<details>
+<summary><b>Click to expand detailed steps</b></summary>
+
+<br>
+
+Choose between running on your host machine or in Docker:
+
+<br>
+
+##### **Option A:** Run on Host Machine
+
+> 📦 **Requires:** Node.js v16+ installed
+
+<br>
+
+**Step 1:** Login to Firebase
 
 ```bash
-docker build -t privora-gui .
+npx firebase-tools login --no-localhost
 ```
 
-### 2. Run the Container
+This opens your browser for authentication.
+
+<br>
+
+**Step 2:** List your projects
 
 ```bash
+npx firebase-tools projects:list
+```
+
+Note your project ID (e.g., `my-project-123`)
+
+<br>
+
+**Step 3:** List your web apps
+
+```bash
+npx firebase-tools apps:list --project my-project-123
+```
+
+> ⚠️ If no web app exists, create one in the Firebase Console
+
+<br>
+
+**Step 4:** Get SDK configuration
+
+```bash
+npx firebase-tools apps:sdkconfig web --project my-project-123
+```
+
+This outputs your Firebase configuration.
+
+<br>
+
+**Step 5:** Copy config to file
+
+```bash
+cp src/firebase-config.example.ts src/firebase-config.ts
+```
+
+Then paste the credentials displayed by the `npx firebase-tools` command into `src/firebase-config.ts`
+
+<br>
+
+---
+
+##### **Option B:** Run in Docker (No Host Pollution)
+
+> 🐳 **No Node.js installation needed!**
+
+<br>
+
+**Step 1:** Start an interactive Node container
+
+```bash
+docker run -it --rm -v ${PWD}:/app -w /app node:18 bash
+```
+
+<br>
+
+**Step 2:** Inside the container, run Firebase commands
+
+```bash
+npx firebase-tools login --no-localhost
+npx firebase-tools projects:list
+npx firebase-tools apps:list --project my-project-123
+npx firebase-tools apps:sdkconfig web --project my-project-123
+```
+
+<br>
+
+**Step 3:** Copy the output
+
+Copy the configuration to your clipboard.
+
+<br>
+
+**Step 4:** Exit the container
+
+```bash
+exit
+```
+
+<br>
+
+**Step 5:** On your host machine
+
+```bash
+cp src/firebase-config.example.ts src/firebase-config.ts
+```
+
+Then paste the credentials into `src/firebase-config.ts`
+
+<br>
+
+</details>
+
+<br>
+
+---
+
+#### 🔒 Security Best Practices
+
+<details>
+<summary><b>Important Security Notes</b></summary>
+
+<br>
+
+**⚠️ Critical:**
+- ❌ **Never commit** `firebase-config.ts` to version control
+- ✅ File is already in `.gitignore`
+- ✅ Keep Firebase API keys secure
+
+<br>
+
+**🔐 Restrict Your Firebase API Key:**
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Navigate to **APIs & Services** → **Credentials**
+3. Find your Firebase API key
+4. Click **Edit** and configure:
+   - ✅ Application restrictions (add your domain)
+   - ✅ API restrictions (limit to necessary Firebase APIs)
+
+<br>
+
+</details>
+
+<br>
+
+### **4.** Build & Run with Docker
+
+#### **Production Mode** (Default)
+
+```bash
+# Build the image
+docker build -t privora-gui .
+
+# Run the container
 docker run -p 3000:80 privora-gui
 ```
 
-Then open your browser at:  
-👉 [http://localhost:3000](http://localhost:3000)
+**Access the app:** http://localhost:3000 🚀
+
+<br>
 
 ---
 
-## 🔁 Live Coding / Dev Mode (Linux only)
+<br>
 
-This project supports **live coding (hot reload)** using a dedicated **development Docker image**.
+## 💻 Development Mode (Linux Only)
 
-> ⚠️ Important  
-> The default `Dockerfile` runs the app in **production mode** (static build served by Nginx).  
-> For live reload during development, you **must** use `Dockerfile.dev`.
+> 🔥 **Hot Reload** for active development
 
----
+<br>
 
-### 🐳 Development with Docker (Linux)
+### Prerequisites for Development
 
-#### 1️⃣ Build the development image
+- Linux/macOS (required for volume mounting)
+- Docker installed
+
+<br>
+
+### Development Workflow
+
+**Step 1:** Build the development image
 
 ```bash
 docker build -f Dockerfile.dev -t privora-gui-dev .
 ```
 
-#### 2️⃣ Run the development container with hot reload
+<br>
+
+**Step 2:** Run with hot reload
 
 ```bash
 docker run \
@@ -281,63 +560,176 @@ docker run \
   privora-gui-dev
 ```
 
-Then open your browser at:  
-👉 http://localhost:3000
+<br>
+
+### What This Provides
+
+- ✅ Edit source code on your host machine
+- ✅ Instant browser refresh on save
+- ✅ React runs in development mode
+- ✅ `node_modules` isolated in container
+
+<br>
+
+**Access development server:** http://localhost:3000
+
+<br>
+
+> **Note:** For production, use the standard `Dockerfile` which builds a static bundle served by Nginx.
+
+<br>
 
 ---
 
-### ✅ What this setup provides
-
-- Edit the source code directly on your host machine
-- Instant hot reload in the browser
-- React runs in development mode (`npm start`)
-- `node_modules` is isolated inside the container
-
----
-
-### 🛑 Production note
-
-For production usage, use the default `Dockerfile`, which builds the app and serves it with Nginx.
-
----
+<br>
 
 ## 🗂️ Project Structure
 
 ```
 Privora-GUI/
-├── LICENSE               # Project license
-├── README.md             # This documentation file
-├── node_modules/         # Installed dependencies (ignored by Git)
-├── package-lock.json     # NPM lock file to ensure consistent installs
-├── package.json          # Project dependencies and scripts
-├── postcss.config.js     # PostCSS configuration (used by Tailwind CSS)
-├── public/               # Public static files (e.g., index.html, favicon)
-├── src/                  # React source code (components, hooks, etc.)
-├── tailwind.config.js    # Tailwind CSS configuration
-├── tsconfig.json         # TypeScript configuration
+│
+├── 📁 public/                  # Static assets
+│   ├── index.html             # HTML template
+│   └── favicon.ico            # App icon
+│
+├── 📁 src/                     # Source code
+│   ├── 📁 components/         # React components
+│   ├── 📁 hooks/              # Custom React hooks
+│   ├── 📁 utils/              # Utility functions
+│   ├── firebase-config.ts     # Firebase configuration (gitignored)
+│   ├── App.tsx                # Main App component
+│   └── index.tsx              # Entry point
+│
+├── 📁 screenshots/             # App screenshots
+│   ├── login.png
+│   └── chatwindow.PNG
+│
+├── 📄 .env                     # Environment variables (gitignored)
+├── 📄 .env.example             # Environment template
+├── 📄 .gitignore               # Git ignore rules
+├── 📄 Dockerfile               # Production Docker image
+├── 📄 Dockerfile.dev           # Development Docker image
+├── 📄 package.json             # Dependencies & scripts
+├── 📄 tailwind.config.js       # Tailwind CSS config
+├── 📄 tsconfig.json            # TypeScript config
+├── 📄 README.md                # This file
+└── 📄 LICENSE                  # GPL v3 License
 ```
 
----
-
-## 🔙 Backend Repository
-
-You can find the backend source code here:  
-👉 [Privora Backend](https://github.com/med1001/Privora)
+<br>
 
 ---
+
+<br>
+
+## 📚 Documentation
+
+### Additional Resources
+
+| Document | Description | Link |
+|----------|-------------|------|
+| 🔌 **API Documentation** | REST & WebSocket API reference | [View Docs](./API-Documentation.md) |
+| 🔙 **Backend Repository** | Privora backend source code | [GitHub](https://github.com/med1001/Privora) |
+| 🚀 **Setup Scripts** | Automated installation scripts | [View Scripts](./SETUP-SCRIPTS-README.md) |
+
+<br>
+
+---
+
+<br>
 
 ## 🖼️ Screenshots
 
+<div align="center">
+
 ### 🔐 Authentication Page
 
-![Login Screenshot](screenshots/login.png)
+<img src="screenshots/login.png" alt="Login Screenshot" width="800"/>
+
+<br><br>
 
 ### 💬 Chat Interface
 
-![Chat Screenshot](screenshots/chatwindow.PNG)
+<img src="screenshots/chatwindow.PNG" alt="Chat Screenshot" width="800"/>
+
+</div>
+
+<br>
 
 ---
 
+<br>
+
+## 🤝 Contributing
+
+Contributions are welcome! Here's how you can help:
+
+1. 🍴 Fork the repository
+2. 🌿 Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. 💾 Commit your changes (`git commit -m 'Add amazing feature'`)
+4. 📤 Push to the branch (`git push origin feature/amazing-feature`)
+5. 🔃 Open a Pull Request
+
+<br>
+
+**Code Quality Guidelines:**
+- ✅ Follow TypeScript best practices
+- ✅ Write clean, readable code
+- ✅ Add comments for complex logic
+- ✅ Test your changes thoroughly
+
+<br>
+
+---
+
+<br>
+
 ## 📄 License
 
-GNU General Public License v3.0 — see the [LICENSE](./LICENSE) file.
+This project is licensed under the **GNU General Public License v3.0**.
+
+See the [LICENSE](./LICENSE) file for details.
+
+```
+Copyright (C) 2024 Privora
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+```
+
+<br>
+
+---
+
+<br>
+
+## ⭐ Support the Project
+
+If you find **Privora** useful, please consider giving it a star! ⭐
+
+Your support helps:
+- 📈 Increase project visibility
+- 💪 Motivate continued development
+- 🤝 Build a stronger community
+
+<div align="center">
+
+### **[⭐ Star this repository](https://github.com/med1001/Privora-GUI)**
+
+It only takes a second, but it means a lot! 💙
+
+<br>
+
+---
+
+<br>
+
+Made with ❤️ by the Privora Team
+
+**[Report Bug](https://github.com/med1001/Privora-GUI/issues)** • **[Request Feature](https://github.com/med1001/Privora-GUI/issues)** • **[Ask Question](https://github.com/med1001/Privora-GUI/discussions)**
+
+<br>
+
+</div>
