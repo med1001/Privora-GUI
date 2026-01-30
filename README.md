@@ -252,29 +252,52 @@ Then open your browser at:
 
 ---
 
-## 🔁 Live Coding / Dev Mode
+## 🔁 Live Coding / Dev Mode (Linux only)
 
-To enable hot reload while you code:
+This project supports **live coding (hot reload)** using a dedicated **development Docker image**.
 
-**Linux/macOS:**
+> ⚠️ Important  
+> The default `Dockerfile` runs the app in **production mode** (static build served by Nginx).  
+> For live reload during development, you **must** use `Dockerfile.dev`.
+
+---
+
+### 🐳 Development with Docker (Linux)
+
+#### 1️⃣ Build the development image
+
 ```bash
-docker run -p 3000:3000 -v ${PWD}:/app -v /app/node_modules privora-gui
+docker build -f Dockerfile.dev -t privora-gui-dev .
 ```
 
-**Windows (PowerShell):**
-```powershell
-docker run -p 3000:3000 -v ${PWD}:/app -v /app/node_modules privora-gui
+#### 2️⃣ Run the development container with hot reload
+
+```bash
+docker run \
+  -p 3000:80 \
+  -v ${PWD}:/app \
+  -v /app/node_modules \
+  -e CHOKIDAR_USEPOLLING=true \
+  privora-gui-dev
 ```
 
-**Windows (CMD):**
-```cmd
-docker run -p 3000:3000 -v %cd%:/app -v /app/node_modules privora-gui
-```
+Then open your browser at:  
+👉 http://localhost:80
 
-This lets you:
-- Edit code on your host machine
-- See changes live in the browser
-- Avoid issues with `node_modules` being overwritten
+---
+
+### ✅ What this setup provides
+
+- Edit the source code directly on your host machine
+- Instant hot reload in the browser
+- React runs in development mode (`npm start`)
+- `node_modules` is isolated inside the container
+
+---
+
+### 🛑 Production note
+
+For production usage, use the default `Dockerfile`, which builds the app and serves it with Nginx.
 
 ---
 
