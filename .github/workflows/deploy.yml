@@ -2,7 +2,7 @@ name: Deploy Frontend to EC2
 
 on:
   push:
-    branches: [ main ] 
+    branches: [ main ]
 
 jobs:
   build-and-push:
@@ -42,7 +42,11 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             cd ~
+            # Télécharge la dernière image
             docker pull ${{ secrets.DOCKER_USERNAME }}/privora-gui:latest
-            # On ajoute --force-recreate pour éviter les doublons de noms
-            docker-compose up -d --force-recreate frontend || docker compose up -d --force-recreate frontend
-            docker image prune -f 
+            
+            # Utilisation de la V2 (sans tiret) pour éviter les bugs de métadonnées
+            docker compose up -d --force-recreate frontend
+            
+            # Nettoie les anciennes images pour gagner de l'espace
+            docker image prune -f
