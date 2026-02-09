@@ -41,6 +41,6 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
+            docker image prune -f
             docker pull ${{ secrets.DOCKER_USERNAME }}/privora-gui:latest
-            # On demande à docker-compose de recréer uniquement le service frontend
-            docker compose up -d frontend
+            docker-compose up -d frontend || docker compose up -d frontend
