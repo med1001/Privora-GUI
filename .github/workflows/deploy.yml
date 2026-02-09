@@ -41,7 +41,8 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-           cd ~
-           docker pull ${{ secrets.DOCKER_USERNAME }}/privora-gui:latest
-           docker-compose up -d frontend || docker compose up -d frontend
-           docker image prune -f
+            cd ~
+            docker pull ${{ secrets.DOCKER_USERNAME }}/privora-gui:latest
+            # On ajoute --force-recreate pour éviter les doublons de noms
+            docker-compose up -d --force-recreate frontend || docker compose up -d --force-recreate frontend
+            docker image prune -f
