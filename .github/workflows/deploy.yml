@@ -45,4 +45,4 @@ jobs:
             docker pull ${{ secrets.DOCKER_USERNAME }}/privora-gui:latest
             # On ajoute --force-recreate pour éviter les doublons de noms
             docker-compose up -d --force-recreate frontend || docker compose up -d --force-recreate frontend
-            docker image prune -f
+            docker image prune -f 
