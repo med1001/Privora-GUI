@@ -23,10 +23,41 @@ const ChatWrapper: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
   const token = localStorage.getItem("token");
   const localUserId = localStorage.getItem("userId");
 
+  // Initialize with self-chat for notes on component mount
+  useEffect(() => {
+    console.log("[ChatWrapper] useEffect triggered. localUserId:", localUserId);
+    if (localUserId) {
+      const displayName = localStorage.getItem("displayName") || localUserId;
+      console.log("[ChatWrapper] Setting self-chat with displayName:", displayName);
+      setRecentChats((prev) => {
+        // Check if self-chat already exists
+        const hasSelfChat = prev.some((c) => c.userId === localUserId);
+        if (!hasSelfChat) {
+          console.log("[ChatWrapper] Adding self-chat");
+          // Add self-chat at the beginning with user's display name
+          return [
+            {
+              userId: localUserId,
+              displayName: displayName,
+            },
+            ...prev,
+          ];
+        }
+        console.log("[ChatWrapper] Self-chat already exists");
+        return prev;
+      });
+    }
+  }, [localUserId]);
+
   const { sendMessage: sendWsMessage } = useWebSocket(token, (parsed: any) => {
     try {
       if (parsed.contacts && Array.isArray(parsed.contacts)) {
-        setRecentChats(parsed.contacts);
+        // Preserve self-chat when updating contacts
+        setRecentChats((prev) => {
+          const selfChat = prev.find((c) => c.userId === localUserId);
+          const otherContacts = parsed.contacts.filter((c: UserSummary) => c.userId !== localUserId);
+          return selfChat ? [selfChat, ...otherContacts] : otherContacts;
+        });
       } else if (parsed.type === "message" && parsed.from && parsed.message) {
         const { from, message, fromDisplayName } = parsed;
 
