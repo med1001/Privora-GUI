@@ -24,7 +24,7 @@ const Register = () => {
       // Envoyer l'email de vérification
       await sendEmailVerification(userCredential.user);
 
-      setMessage("✅ Inscription réussie ! Vérifie ton email pour valider ton compte.");
+      setMessage("✅ Registration successful! Check your email to verify your account.\n⚠️ Don't forget to check your spam folder!");
   //    setTimeout(() => navigate("/login"), 3000);
     } catch (error: any) {
       const firebaseError = error.message || "Erreur inconnue.";
@@ -36,7 +36,12 @@ const Register = () => {
     <div className="flex flex-col items-center justify-center h-screen bg-gray-100">
       <form onSubmit={handleRegister} className="bg-white p-6 rounded shadow-md w-80">
         <h2 className="text-xl font-bold mb-4">Register</h2>
-        {message && <p className="text-red-500 mb-2">{message}</p>}
+        
+        {message && (
+          <div className={`${message.includes("✅") ? "text-green-600 bg-green-50" : "text-red-600 bg-red-50"} p-3 rounded mb-3 text-sm`}>
+            {message}
+          </div>
+        )}
         <input
           type="text"
           placeholder="Username"
