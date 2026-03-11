@@ -148,16 +148,14 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         {/* Connection Status Indicator (peer presence only) */}
         <div className="flex items-center gap-2">
           {selectedChat && (
-            <div className="flex items-center gap-1 text-xs">
+            <div className="flex items-center gap-1 text-[11px] sm:text-xs text-white/80">
               <span
                 className={
                   "inline-block w-2 h-2 rounded-full " +
                   (peerOnline ? "bg-green-400" : "bg-gray-400")
                 }
               ></span>
-              <span className="hidden sm:inline">
-                {peerOnline ? "Online" : "Offline"}
-              </span>
+              <span>{peerOnline ? "Online" : "Offline"}</span>
             </div>
           )}
         </div>
