@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Search, LogOut, Settings, Menu } from "lucide-react";
+import { Search, LogOut, Settings, Menu, MessageCircle } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -120,9 +120,11 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           >
             <Menu size={24} />
           </button>
-          <span className="text-lg font-semibold truncate">
-            {selectedChatDisplayName}
-          </span>
+          {selectedChat && (
+            <span className="text-lg font-semibold truncate">
+              {selectedChatDisplayName}
+            </span>
+          )}
         </div>
 
         {/* Desktop Search ONLY */}
@@ -182,40 +184,53 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
       {/* Messages */}
       <div
-        className="flex-grow p-3 overflow-y-auto space-y-3"
+        className="flex-grow p-3 overflow-y-auto space-y-3 flex flex-col"
         ref={scrollRef}
       >
-        {messages.map((msg, idx) => {
-          const [sender, ...rest] = msg.split(": ");
-          const isOwn = sender === userId;
-          return (
-            <div
-              key={idx}
-              className={`p-2 rounded-lg max-w-xs ${
-                isOwn
-                  ? "bg-blue-600 text-white ml-auto"
-                  : "bg-gray-200 text-black mr-auto"
-              }`}
-            >
-              {rest.join(": ")}
+        {!selectedChat ? (
+          <div className="flex-grow flex items-center justify-center">
+            <div className="text-center">
+              <MessageCircle size={48} className="text-gray-300 mx-auto mb-4" />
+              <p className="text-gray-500 text-sm font-medium">
+                Select a user to start chatting
+              </p>
             </div>
-          );
-        })}
+          </div>
+        ) : (
+          messages.map((msg, idx) => {
+            const [sender, ...rest] = msg.split(": ");
+            const isOwn = sender === userId;
+            return (
+              <div
+                key={idx}
+                className={`p-2 rounded-lg max-w-xs ${
+                  isOwn
+                    ? "bg-blue-600 text-white ml-auto"
+                    : "bg-gray-200 text-black mr-auto"
+                }`}
+              >
+                {rest.join(": ")}
+              </div>
+            );
+          })
+        )}
       </div>
 
       {/* Input */}
       <div className="p-3 border-t bg-gray-100 flex items-center gap-2">
         <input
           type="text"
-          className="flex-grow min-w-0 p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          placeholder="Type a message..."
+          className="flex-grow min-w-0 p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-200"
+          placeholder={selectedChat ? "Type a message..." : "Select a user to start"}
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && send()}
+          disabled={!selectedChat}
         />
         <button
           onClick={send}
-          className="flex-shrink-0 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-800 transition"
+          className="flex-shrink-0 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-800 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
+          disabled={!selectedChat}
         >
           Send
         </button>
