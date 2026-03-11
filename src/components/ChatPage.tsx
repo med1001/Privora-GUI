@@ -10,8 +10,12 @@ const ChatPage = ({
   onSendMessage,
   onLogout,
   onSelectChat,
+  socketStatus,
+  onlineUsers,
 }: any) => {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+
+  const isPeerOnline = selectedChat ? !!onlineUsers?.[selectedChat] : false;
 
   return (
     <div className="h-screen flex">
@@ -32,6 +36,8 @@ const ChatPage = ({
           onSelectChat={onSelectChat}
           recentChats={recentChats}
           onToggleSidebar={() => setMobileSidebarOpen(true)}
+          socketStatus={socketStatus}
+          peerOnline={isPeerOnline}
         />
 
         {/* Mobile Sidebar Drawer */}

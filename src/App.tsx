@@ -2,61 +2,96 @@ import React, { useState, useEffect } from "react";
 import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import Login from "./components/Login";
 import Register from "./components/Register";
-import ChatPage from "./components/ChatPage"; // ✅ IMPORT THE NEW FILE
+import ChatPage from "./components/ChatPage"; //  IMPORT THE NEW FILE
 import useWebSocket from "./hooks/useWebSockets";
 
 interface UserSummary {
   userId: string;
   displayName: string;
+  online?: boolean;
 }
 
 interface Messages {
   [userId: string]: string[];
 }
 
-// ✅ EXTRACT CHAT WRAPPER LOGIC OUT OF App FOR CLEANLINESS
+// Helper to choose a display name: prefer the username set at signup (displayName),
+// otherwise derive a readable name from the identifier (e.g. strip domain from emails).
+const getDisplayName = (rawDisplayName: string | undefined | null, userId: string | null): string => {
+  const normalize = (value: string | null | undefined): string | null => {
+    if (!value) return null;
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+
+    // If the value looks like an email, use only the local part (before '+' / '@').
+    if (trimmed.includes("@")) {
+      const localPart = trimmed.split("@")[0];
+      const base = localPart.split("+")[0];
+      return base || trimmed;
+    }
+
+    return trimmed;
+  };
+
+  const fromRaw = normalize(rawDisplayName);
+  if (fromRaw) return fromRaw;
+
+  const fromId = normalize(userId);
+  if (fromId) return fromId;
+
+  return "";
+};
+
+//  EXTRACT CHAT WRAPPER LOGIC OUT OF App FOR CLEANLINESS
 const ChatWrapper: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
   const [selectedChat, setSelectedChat] = useState<string>("");
   const [messages, setMessages] = useState<Messages>({});
   const [recentChats, setRecentChats] = useState<UserSummary[]>([]);
+  const [onlineUsers, setOnlineUsers] = useState<{ [userId: string]: boolean }>({});
 
   const token = localStorage.getItem("token");
   const localUserId = localStorage.getItem("userId");
 
   // Initialize with self-chat for notes on component mount
   useEffect(() => {
-    console.log("[ChatWrapper] useEffect triggered. localUserId:", localUserId);
     if (localUserId) {
-      const displayName = localStorage.getItem("displayName") || localUserId;
-      console.log("[ChatWrapper] Setting self-chat with displayName:", displayName);
+      const displayName = getDisplayName(localStorage.getItem("displayName"), localUserId);
       setRecentChats((prev) => {
-        // Check if self-chat already exists
-        const hasSelfChat = prev.some((c) => c.userId === localUserId);
-        if (!hasSelfChat) {
-          console.log("[ChatWrapper] Adding self-chat");
-          // Add self-chat at the beginning with user's display name
-          return [
-            {
-              userId: localUserId,
-              displayName: displayName,
-            },
-            ...prev,
-          ];
-        }
-        console.log("[ChatWrapper] Self-chat already exists");
-        return prev;
+        // Remove any previous self-chat (in case of user switch)
+        const filtered = prev.filter((c) => c.userId !== localUserId);
+        // Add self-chat at the top
+        return [
+          {
+            userId: localUserId,
+            displayName: displayName,
+          },
+          ...filtered,
+        ];
       });
     }
   }, [localUserId]);
 
-  const { sendMessage: sendWsMessage } = useWebSocket(token, (parsed: any) => {
+  const { sendMessage: sendWsMessage, socketStatus } = useWebSocket(token, (parsed: any) => {
     try {
       if (parsed.contacts && Array.isArray(parsed.contacts)) {
-        // Preserve self-chat when updating contacts
         setRecentChats((prev) => {
-          const selfChat = prev.find((c) => c.userId === localUserId);
-          const otherContacts = parsed.contacts.filter((c: UserSummary) => c.userId !== localUserId);
-          return selfChat ? [selfChat, ...otherContacts] : otherContacts;
+          const selfDisplayName = getDisplayName(localStorage.getItem("displayName"), localUserId);
+          const selfChat = localUserId
+            ? [{ userId: localUserId, displayName: selfDisplayName, online: true }]
+            : [];
+          // Build a map to deduplicate and always use latest displayName from backend
+          const chatMap = new Map();
+          selfChat.forEach((c) => chatMap.set(c.userId, c));
+          parsed.contacts.forEach((c: UserSummary) => {
+            if (c.userId !== localUserId) {
+              chatMap.set(c.userId, {
+                userId: c.userId,
+                displayName: getDisplayName(c.displayName, c.userId),
+                online: c.online,
+              });
+            }
+          });
+          return Array.from(chatMap.values());
         });
       } else if (parsed.type === "message" && parsed.from && parsed.message) {
         const { from, message, fromDisplayName } = parsed;
@@ -67,9 +102,27 @@ const ChatWrapper: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
         }));
 
         setRecentChats((prev) => {
-          const exists = prev.some((c) => c.userId === from);
-          if (exists) return prev;
-          return [{ userId: from, displayName: fromDisplayName || from }, ...prev];
+          const selfDisplayName = getDisplayName(localStorage.getItem("displayName"), localUserId);
+          const chatMap = new Map();
+          if (localUserId)
+            chatMap.set(localUserId, {
+              userId: localUserId,
+              displayName: selfDisplayName,
+              online: true,
+            });
+          prev.forEach((c) => {
+            if (c.userId !== localUserId && c.userId !== from) {
+              chatMap.set(c.userId, c);
+            }
+          });
+          if (from !== localUserId) {
+            chatMap.set(from, {
+              userId: from,
+              displayName: getDisplayName(fromDisplayName, from),
+              online: true,
+            });
+          }
+          return Array.from(chatMap.values());
         });
 
         setSelectedChat((prevSelected) => prevSelected || from);
@@ -93,19 +146,76 @@ const ChatWrapper: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
         }));
 
         setRecentChats((prev) => {
-          const newEntries = Object.keys(historyByUser)
-            .filter((userId) => !prev.some((c) => c.userId === userId))
-            .map((userId) => {
-              const exampleMsg = parsed.messages.find(
-                (msg: any) => msg.from === userId || msg.to === userId
-              );
-              return {
-                userId,
-                displayName: exampleMsg?.fromDisplayName || userId,
-              };
+          const selfDisplayName = getDisplayName(localStorage.getItem("displayName"), localUserId);
+          const chatMap = new Map<string, UserSummary>();
+
+          // Ensure self-chat always present with correct name
+          if (localUserId) {
+            chatMap.set(localUserId, {
+              userId: localUserId,
+              displayName: selfDisplayName,
+              online: true,
             });
-          return [...newEntries, ...prev];
+          }
+
+          // Seed with existing entries for other users
+          prev.forEach((c) => {
+            if (c.userId !== localUserId) {
+              chatMap.set(c.userId, c);
+            }
+          });
+
+          // For each user that appears in history, update/insert entry
+          Object.keys(historyByUser)
+            .filter((userId) => userId !== localUserId)
+            .forEach((userId) => {
+              const existing = chatMap.get(userId);
+              let displayName = existing?.displayName || "";
+
+              // Prefer a message where that user is the sender with a fromDisplayName
+              if (!displayName) {
+                const fromMsg = parsed.messages.find(
+                  (msg: any) => msg.from === userId && msg.fromDisplayName
+                );
+                if (fromMsg && fromMsg.fromDisplayName) {
+                  displayName = fromMsg.fromDisplayName;
+                }
+              }
+
+              // Fallback to userId if still empty
+              if (!displayName) {
+                displayName = getDisplayName(undefined, userId);
+              }
+
+              const currentlyOnline = onlineUsers[userId] ?? false;
+
+              chatMap.set(userId, {
+                userId,
+                displayName,
+                online: currentlyOnline,
+              });
+            });
+
+          return Array.from(chatMap.values());
         });
+      } else if (parsed.type === "presence" && parsed.userId && parsed.status) {
+        const { userId, status } = parsed;
+
+        setOnlineUsers((prev) => ({
+          ...prev,
+          [userId]: status === "online",
+        }));
+
+        setRecentChats((prev) =>
+          prev.map((c) =>
+            c.userId === userId
+              ? {
+                  ...c,
+                  online: status === "online",
+                }
+              : c
+          )
+        );
       }
     } catch (err) {
       console.error("Invalid WebSocket JSON:", parsed, err);
@@ -115,16 +225,33 @@ const ChatWrapper: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
   const handleSelectChat = (userId: string, displayName?: string) => {
     setSelectedChat(userId);
 
-    const exists = recentChats.some((c) => c.userId === userId);
-    if (!exists) {
-      const newEntry = { userId, displayName: displayName || userId };
-      setRecentChats((prev) => [newEntry, ...prev]);
-    }
+    setRecentChats((prev) => {
+      // Always keep self-chat at the top, remove any duplicate
+      const localUserId = localStorage.getItem("userId");
+      const displayNameSelf = getDisplayName(localStorage.getItem("displayName"), localUserId);
+      const selfChat = localUserId
+        ? [{ userId: localUserId, displayName: displayNameSelf, online: true }]
+        : [];
+      // Add / update selected user if not self
+      const others = prev.filter((c) => c.userId !== localUserId && c.userId !== userId);
+      if (userId !== localUserId) {
+        return [
+          ...selfChat,
+          {
+            userId,
+            displayName: getDisplayName(displayName, userId),
+            online: onlineUsers[userId] ?? false,
+          },
+          ...others,
+        ];
+      }
+      return [...selfChat, ...others];
+    });
   };
 
   const sendMessage = (message: string, recipientUserId: string) => {
     if (message.trim() !== "" && recipientUserId && localUserId) {
-      const displayName = localStorage.getItem("displayName") || localUserId;
+      const displayName = getDisplayName(localStorage.getItem("displayName"), localUserId);
       setMessages((prev) => ({
         ...prev,
         [recipientUserId]: [
@@ -145,6 +272,8 @@ const ChatWrapper: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
       onSendMessage={sendMessage}
       onLogout={onLogout}
       onSelectChat={handleSelectChat}
+      socketStatus={socketStatus}
+      onlineUsers={onlineUsers}
     />
   );
 };

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Search, LogOut, Settings, Menu, MessageCircle } from "lucide-react";
+import { Search, LogOut, Settings, Menu, MessageCircle, Wifi, WifiOff } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -26,6 +26,8 @@ interface ChatWindowProps {
   recentChats: RecentChat[];
   onToggleSidebar?: () => void; // For mobile drawer toggle
   isMobile?: boolean; // NEW: tell if mobile
+  socketStatus?: string; // WebSocket connection status
+  peerOnline?: boolean; // Whether the selected chat peer is online
 }
 
 const ChatWindow: React.FC<ChatWindowProps> = ({
@@ -37,14 +39,27 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   recentChats,
   onToggleSidebar,
   isMobile = false,
+  socketStatus = "disconnected",
+  peerOnline = false,
 }) => {
   const [message, setMessage] = useState("");
   const [search, setSearch] = useState("");
   const [suggestions, setSuggestions] = useState<UserSuggestion[]>([]);
   const [loading, setLoading] = useState(false);
+  const [sending, setSending] = useState(false); // Track if message is being sent
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const displayName = localStorage.getItem("displayName") || "User";
+  const rawDisplayName = localStorage.getItem("displayName") || "User";
+  const displayName = (() => {
+    const trimmed = rawDisplayName.trim();
+    if (!trimmed) return "User";
+    if (trimmed.includes("@")) {
+      const localPart = trimmed.split("@")[0];
+      const base = localPart.split("+")[0];
+      return base || trimmed;
+    }
+    return trimmed;
+  })();
   const userId = localStorage.getItem("userId");
 
   const selectedChatDisplayName =
@@ -53,7 +68,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     "No user selected";
 
   // Read API base URL from environment variables
-  const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:8080";
+  const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:8000";
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -103,8 +118,11 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
   const send = () => {
     if (message.trim() && selectedChat) {
+      setSending(true);
       onSendMessage(message, selectedChat);
       setMessage("");
+      // Simulate send completion (in real app, you'd wait for confirmation)
+      setTimeout(() => setSending(false), 300);
     }
   };
 
@@ -124,6 +142,23 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
             <span className="text-lg font-semibold truncate">
               {selectedChatDisplayName}
             </span>
+          )}
+        </div>
+
+        {/* Connection Status Indicator (peer presence only) */}
+        <div className="flex items-center gap-2">
+          {selectedChat && (
+            <div className="flex items-center gap-1 text-xs">
+              <span
+                className={
+                  "inline-block w-2 h-2 rounded-full " +
+                  (peerOnline ? "bg-green-400" : "bg-gray-400")
+                }
+              ></span>
+              <span className="hidden sm:inline">
+                {peerOnline ? "Online" : "Offline"}
+              </span>
+            </div>
           )}
         </div>
 
@@ -152,7 +187,15 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                     className="p-2 cursor-pointer hover:bg-gray-100"
                     onClick={() => handleSuggestionClick(user)}
                   >
-                    <span className="text-black">{user.displayName}</span>
+                    <span className="text-black">
+                      {user.displayName && user.displayName.includes("@")
+                        ? (() => {
+                            const localPart = user.displayName.split("@")[0];
+                            const base = localPart.split("+")[0];
+                            return base || user.displayName;
+                          })()
+                        : user.displayName}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -224,15 +267,22 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           placeholder={selectedChat ? "Type a message..." : "Select a user to start"}
           value={message}
           onChange={(e) => setMessage(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && send()}
-          disabled={!selectedChat}
+          onKeyDown={(e) => e.key === "Enter" && !sending && send()}
+          disabled={!selectedChat || sending}
         />
         <button
           onClick={send}
-          className="flex-shrink-0 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-800 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
-          disabled={!selectedChat}
+          className="flex-shrink-0 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-800 transition disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
+          disabled={!selectedChat || sending}
         >
-          Send
+          {sending ? (
+            <>
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              <span className="hidden sm:inline">Sending...</span>
+            </>
+          ) : (
+            "Send"
+          )}
         </button>
       </div>
     </div>

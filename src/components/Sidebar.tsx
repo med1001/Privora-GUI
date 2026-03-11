@@ -117,7 +117,13 @@ const Sidebar: React.FC<SidebarProps> = ({
                   className="p-2 cursor-pointer hover:bg-gray-100"
                   onClick={() => handleSuggestionClick(user)}
                 >
-                  {user.displayName}
+                  {user.displayName && user.displayName.includes("@")
+                    ? (() => {
+                        const localPart = user.displayName.split("@")[0];
+                        const base = localPart.split("+")[0];
+                        return base || user.displayName;
+                      })()
+                    : user.displayName}
                 </div>
               ))}
             </div>
