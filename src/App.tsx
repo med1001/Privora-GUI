@@ -279,13 +279,10 @@ const ChatWrapper: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
 };
 
 const App: React.FC = () => {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  // Initialize auth state from localStorage so a refresh on /chat
+  // does not briefly treat the user as unauthenticated and redirect.
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => !!localStorage.getItem("token"));
   const navigate = useNavigate();
-
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    setIsAuthenticated(!!token);
-  }, []);
 
   const login = (token: string) => {
     localStorage.setItem("token", token);
