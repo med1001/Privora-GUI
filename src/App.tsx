@@ -4,6 +4,7 @@ import Login from "./components/Login";
 import Register from "./components/Register";
 import ChatPage from "./components/ChatPage"; //  IMPORT THE NEW FILE
 import useWebSocket from "./hooks/useWebSockets";
+import { useUnreadCounts } from "./hooks/useUnreadCounts";
 
 interface UserSummary {
   userId: string;
@@ -44,10 +45,11 @@ const getDisplayName = (rawDisplayName: string | undefined | null, userId: strin
 
 //  EXTRACT CHAT WRAPPER LOGIC OUT OF App FOR CLEANLINESS
 const ChatWrapper: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
-  const [selectedChat, setSelectedChat] = useState<string>("");
+  const [selectedChat, setSelectedChat] = useState<string | null>(null);
   const [messages, setMessages] = useState<Messages>({});
   const [recentChats, setRecentChats] = useState<UserSummary[]>([]);
   const [onlineUsers, setOnlineUsers] = useState<{ [userId: string]: boolean }>({});
+  const { unreadCounts, incrementUnreadCount, resetUnreadCount } = useUnreadCounts();
 
   const token = localStorage.getItem("token");
   const localUserId = localStorage.getItem("userId");
@@ -93,8 +95,8 @@ const ChatWrapper: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
           });
           return Array.from(chatMap.values());
         });
-      } else if (parsed.type === "message" && parsed.from && parsed.message) {
-        const { from, message, fromDisplayName } = parsed;
+      } else if ((parsed.type === "message" || parsed.type === "offline") && parsed.from && parsed.message) {
+        const { from, message, fromDisplayName, type } = parsed;
 
         setMessages((prev) => ({
           ...prev,
@@ -102,30 +104,24 @@ const ChatWrapper: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
         }));
 
         setRecentChats((prev) => {
-          const selfDisplayName = getDisplayName(localStorage.getItem("displayName"), localUserId);
-          const chatMap = new Map();
-          if (localUserId)
-            chatMap.set(localUserId, {
-              userId: localUserId,
-              displayName: selfDisplayName,
-              online: true,
-            });
-          prev.forEach((c) => {
-            if (c.userId !== localUserId && c.userId !== from) {
-              chatMap.set(c.userId, c);
-            }
+          const chatMap = new Map(prev.map((c) => [c.userId, c]));
+          const existing = chatMap.get(from);
+          chatMap.set(from, { 
+            userId: from, 
+            displayName: fromDisplayName || existing?.displayName || getDisplayName(undefined, from),
+            online: existing?.online
           });
-          if (from !== localUserId) {
-            chatMap.set(from, {
-              userId: from,
-              displayName: getDisplayName(fromDisplayName, from),
-              online: true,
-            });
-          }
           return Array.from(chatMap.values());
         });
 
-        setSelectedChat((prevSelected) => prevSelected || from);
+        if (type !== "offline" && !selectedChat && from !== localUserId) {
+          // Auto-open standard incoming messages if nothing is opened
+          setSelectedChat(from);
+        } else if (from !== localUserId && selectedChat !== from) {
+          // Add unread count for offline messages or if watching another chat
+          incrementUnreadCount(from);
+        }
+
       } else if (parsed.type === "history" && Array.isArray(parsed.messages)) {
         const historyByUser: { [userId: string]: string[] } = {};
 
@@ -224,6 +220,7 @@ const ChatWrapper: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
 
   const handleSelectChat = (userId: string, displayName?: string) => {
     setSelectedChat(userId);
+    resetUnreadCount(userId);
 
     setRecentChats((prev) => {
       // Always keep self-chat at the top, remove any duplicate
@@ -268,6 +265,7 @@ const ChatWrapper: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
     <ChatPage
       selectedChat={selectedChat}
       recentChats={recentChats}
+      unreadCounts={unreadCounts}
       messages={messages}
       onSendMessage={sendMessage}
       onLogout={onLogout}

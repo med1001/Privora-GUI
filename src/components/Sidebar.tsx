@@ -11,6 +11,7 @@ interface SidebarProps {
   onSelect: (userId: string, displayName?: string) => void;
   selectedChat: string;
   recentChats: UserSuggestion[];
+  unreadCounts?: Record<string, number>;
   isMobile?: boolean;
   onClose?: () => void;
 }
@@ -19,6 +20,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   onSelect,
   selectedChat,
   recentChats,
+  unreadCounts = {},
   isMobile = false,
   onClose,
 }) => {
@@ -141,13 +143,18 @@ const Sidebar: React.FC<SidebarProps> = ({
               onSelect(userId, displayName);
               if (isMobile) onClose?.();
             }}
-            className={`p-2 rounded cursor-pointer ${
+            className={`p-2 rounded cursor-pointer flex items-center justify-between gap-2 ${
               userId === selectedChat
                 ? "bg-blue-700"
                 : "hover:bg-blue-700 transition"
             }`}
           >
-            {displayName}
+            <span className="truncate">{displayName}</span>
+            {unreadCounts[userId] ? (
+              <span className="min-w-6 h-6 px-2 rounded-full bg-red-500 text-white text-xs font-bold flex items-center justify-center shadow-lg transform group-hover:scale-110 transition-transform duration-200">
+                {unreadCounts[userId] > 99 ? "99+" : unreadCounts[userId]}
+              </span>
+            ) : null}
           </li>
         ))}
       </ul>

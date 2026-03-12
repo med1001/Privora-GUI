@@ -6,6 +6,7 @@ import { AnimatePresence } from "framer-motion";
 const ChatPage = ({
   selectedChat,
   recentChats,
+  unreadCounts,
   messages,
   onSendMessage,
   onLogout,
@@ -24,6 +25,7 @@ const ChatPage = ({
         onSelect={onSelectChat}
         selectedChat={selectedChat}
         recentChats={recentChats}
+        unreadCounts={unreadCounts}
       />
 
       {/* Chat Window */}
@@ -47,6 +49,7 @@ const ChatPage = ({
               onSelect={onSelectChat}
               selectedChat={selectedChat}
               recentChats={recentChats}
+              unreadCounts={unreadCounts}
               isMobile
               onClose={() => setMobileSidebarOpen(false)}
             />
