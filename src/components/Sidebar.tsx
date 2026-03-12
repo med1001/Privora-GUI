@@ -26,8 +26,8 @@ const Sidebar: React.FC<SidebarProps> = ({
   const [suggestions, setSuggestions] = useState<UserSuggestion[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // Read API base URL from env variable
-  const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:8080";
+  // REST base path: env override (full URL), otherwise "/api" on same origin
+  const API_BASE_URL = process.env.REACT_APP_API_URL || "/api";
 
   useEffect(() => {
     if (!search.trim()) {

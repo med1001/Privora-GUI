@@ -68,7 +68,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     "No user selected";
 
   // Read API base URL from environment variables
-  const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:8000";
+  const API_BASE_URL = process.env.REACT_APP_API_URL || "/api";
 
   useEffect(() => {
     if (scrollRef.current) {
