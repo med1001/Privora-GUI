@@ -50,6 +50,12 @@ const ChatWrapper: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
   const [recentChats, setRecentChats] = useState<UserSummary[]>([]);
   const [onlineUsers, setOnlineUsers] = useState<{ [userId: string]: boolean }>({});
   const { unreadCounts, incrementUnreadCount, resetUnreadCount } = useUnreadCounts();
+  const playNotification = () => {
+    try {
+      const audio = new Audio('/assets/messenger.mp3');
+      audio.play().catch(e => console.log('Audio play failed:', e));
+    } catch (e) {}
+  };
 
   const token = localStorage.getItem("token");
   const localUserId = localStorage.getItem("userId");
@@ -121,7 +127,9 @@ const ChatWrapper: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
           // Add unread count for offline messages or if watching another chat
           incrementUnreadCount(from);
         }
-
+          if (type === "message" && from !== localUserId && from !== selectedChat) {
+            playNotification();
+          }
       } else if (parsed.type === "history" && Array.isArray(parsed.messages)) {
         const historyByUser: { [userId: string]: string[] } = {};
 
@@ -308,3 +316,5 @@ const App: React.FC = () => {
 };
 
 export default App;
+
+
