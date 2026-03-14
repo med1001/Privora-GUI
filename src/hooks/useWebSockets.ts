@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const useWebSocket = (
   token: string | null,
@@ -6,6 +6,11 @@ const useWebSocket = (
 ) => {
   const [socket, setSocket] = useState<WebSocket | null>(null);
   const [socketStatus, setSocketStatus] = useState("disconnected");
+  const onMessageReceivedRef = useRef(onMessageReceived);
+
+  useEffect(() => {
+    onMessageReceivedRef.current = onMessageReceived;
+  }, [onMessageReceived]);
 
   useEffect(() => {
     if (token) {
@@ -36,7 +41,7 @@ const useWebSocket = (
             console.log("[WebSocket] Received non-message type:", data);
           }
 
-          onMessageReceived(data);
+          onMessageReceivedRef.current(data);
         } catch (err) {
           console.error("[WebSocket] Failed to parse incoming message:", event.data, err);
         }
