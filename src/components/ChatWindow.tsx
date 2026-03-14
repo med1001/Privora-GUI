@@ -65,10 +65,12 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   })();
   const userId = localStorage.getItem("userId");
 
-  const selectedChatDisplayName =
+  const rawSelectedName =
     recentChats.find((c) => c.userId === selectedChat)?.displayName ||
     selectedChat ||
     "No user selected";
+
+  const selectedChatDisplayName = selectedChat === userId ? `${rawSelectedName} (me)` : rawSelectedName;
 
   // Read API base URL from environment variables
   const API_BASE_URL = process.env.REACT_APP_API_URL || "/api";

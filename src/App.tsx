@@ -263,13 +263,15 @@ const ChatWrapper: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
   const sendMessage = (message: string, recipientUserId: string) => {
     if (message.trim() !== "" && recipientUserId && localUserId) {
       const displayName = getDisplayName(localStorage.getItem("displayName"), localUserId);
-      setMessages((prev) => ({
-        ...prev,
-        [recipientUserId]: [
-          ...(prev[recipientUserId] || []),
-          { senderId: localUserId, senderName: displayName, text: message, timestamp: new Date().toISOString() },
-        ],
-      }));
+      if (recipientUserId !== localUserId) {
+        setMessages((prev) => ({
+          ...prev,
+          [recipientUserId]: [
+            ...(prev[recipientUserId] || []),
+            { senderId: localUserId, senderName: displayName, text: message, timestamp: new Date().toISOString() },
+          ],
+        }));
+      }
 
       sendWsMessage(message, recipientUserId, displayName);
     }
