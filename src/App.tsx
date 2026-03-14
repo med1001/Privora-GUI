@@ -6,6 +6,13 @@ import ChatPage from "./components/ChatPage"; //  IMPORT THE NEW FILE
 import useWebSocket from "./hooks/useWebSockets";
 import { useUnreadCounts } from "./hooks/useUnreadCounts";
 
+export interface MessageObj {
+  senderId: string;
+  senderName?: string;
+  text: string;
+  timestamp: string;
+}
+
 interface UserSummary {
   userId: string;
   displayName: string;
@@ -13,7 +20,7 @@ interface UserSummary {
 }
 
 interface Messages {
-  [userId: string]: string[];
+  [userId: string]: MessageObj[];
 }
 
 // Helper to choose a display name: prefer the username set at signup (displayName),
@@ -106,7 +113,7 @@ const ChatWrapper: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
 
         setMessages((prev) => ({
           ...prev,
-          [from]: [...(prev[from] || []), `${fromDisplayName || from}: ${message}`],
+            [from]: [...(prev[from] || []), { senderId: from, senderName: fromDisplayName || from, text: message, timestamp: parsed.timestamp || new Date().toISOString() }],
         }));
 
         setRecentChats((prev) => {
@@ -131,17 +138,16 @@ const ChatWrapper: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
             playNotification();
           }
       } else if (parsed.type === "history" && Array.isArray(parsed.messages)) {
-        const historyByUser: { [userId: string]: string[] } = {};
+          const historyByUser: { [userId: string]: MessageObj[] } = {};
 
-        parsed.messages.forEach((msg: any) => {
-          const otherUserId = msg.from === localUserId ? msg.to : msg.from;
-          const senderLabel = msg.from === localUserId ? localUserId : (msg.fromDisplayName || msg.from);
-          const formattedMessage = `${senderLabel}: ${msg.message}`;
+          parsed.messages.forEach((msg: any) => {
+            const otherUserId = msg.from === localUserId ? msg.to : msg.from;
+            const senderLabel = msg.from === localUserId ? localUserId : (msg.fromDisplayName || msg.from);
 
-          if (!historyByUser[otherUserId]) {
-            historyByUser[otherUserId] = [];
-          }
-          historyByUser[otherUserId].push(formattedMessage);
+            if (!historyByUser[otherUserId]) {
+              historyByUser[otherUserId] = [];
+            }
+            historyByUser[otherUserId].push({ senderId: msg.from, senderName: senderLabel, text: msg.message, timestamp: msg.timestamp || new Date().toISOString() });
         });
 
         setMessages((prev) => ({
@@ -261,7 +267,7 @@ const ChatWrapper: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
         ...prev,
         [recipientUserId]: [
           ...(prev[recipientUserId] || []),
-          `${localUserId}: ${message}`,
+          { senderId: localUserId, senderName: displayName, text: message, timestamp: new Date().toISOString() },
         ],
       }));
 

@@ -7,6 +7,8 @@ import {
   DropdownMenuItem,
 } from "./dropdown-menu";
 
+import { MessageObj } from "../App";
+
 interface UserSuggestion {
   userId: string;
   displayName: string;
@@ -19,7 +21,7 @@ interface RecentChat {
 
 interface ChatWindowProps {
   selectedChat: string;
-  messages: string[];
+  messages: MessageObj[];
   onSendMessage: (message: string, recipientUserId: string) => void;
   onLogout: () => void;
   onSelectChat: (chatId: string, displayName?: string) => void;
@@ -47,6 +49,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const [suggestions, setSuggestions] = useState<UserSuggestion[]>([]);
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false); // Track if message is being sent
+  const [clickedMessageIdx, setClickedMessageIdx] = useState<number | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const rawDisplayName = localStorage.getItem("displayName") || "User";
@@ -239,18 +242,37 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           </div>
         ) : (
           messages.map((msg, idx) => {
-            const [sender, ...rest] = msg.split(": ");
-            const isOwn = sender === userId;
+            const isOwn = msg.senderId === userId;
+            
+            // Format time safely and fix missing UTC timezone from backend
+            const rawTs = msg.timestamp;
+            const tsToParse = rawTs ? (rawTs.endsWith('Z') || rawTs.includes('+') ? rawTs : rawTs + 'Z') : undefined;
+            const timeString = tsToParse ? new Date(tsToParse).toLocaleString([], { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : "Now";
+
             return (
               <div
                 key={idx}
-                className={`p-2 rounded-lg max-w-xs ${
-                  isOwn
-                    ? "bg-blue-600 text-white ml-auto"
-                    : "bg-gray-200 text-black mr-auto"
+                className={`flex flex-col max-w-[75%] mb-1 ${
+                  isOwn ? "ml-auto items-end" : "mr-auto items-start"
                 }`}
               >
-                {rest.join(": ")}
+                <div
+                  onClick={() => setClickedMessageIdx(clickedMessageIdx === idx ? null : idx)}
+                  className={`py-2 px-3 rounded-xl shadow-sm relative group cursor-pointer transition-all ${
+                    isOwn
+                      ? "bg-blue-600 text-white rounded-br-sm"
+                      : "bg-white border border-gray-200 text-black rounded-bl-sm"
+                  }`}
+                >
+                  <div className="text-[15px] leading-relaxed break-words">{msg.text}</div>
+                </div>
+                {clickedMessageIdx === idx && (
+                  <div className={`text-[11px] mt-1 px-1 select-none flex items-center opacity-70 animate-in fade-in slide-in-from-top-1 ${
+                    isOwn ? "text-gray-500 justify-end" : "text-gray-500 justify-start"
+                  }`}>
+                    {timeString}
+                  </div>
+                )}
               </div>
             );
           })
@@ -288,3 +310,6 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 };
 
 export default ChatWindow;
+
+
+
