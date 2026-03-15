@@ -3,7 +3,9 @@ import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import Login from "./components/Login";
 import Register from "./components/Register";
 import ChatPage from "./components/ChatPage"; //  IMPORT THE NEW FILE
+import CallOverlay from "./components/CallOverlay";
 import useWebSocket from "./hooks/useWebSockets";
+import { useWebRTC } from "./hooks/useWebRTC";
 import { useUnreadCounts } from "./hooks/useUnreadCounts";
 
 export interface MessageObj {
@@ -86,8 +88,50 @@ const ChatWrapper: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
     }
   }, [localUserId]);
 
-  const { sendMessage: sendWsMessage, socketStatus } = useWebSocket(token, (parsed: any) => {
+  const sendRawMessageRef = React.useRef<(payload: any) => void>(() => {});
+  const sendWsMessageRef = React.useRef<(msg: string, to: string, displayName: string) => void>(() => {});
+
+  const webRTC = useWebRTC(
+    localUserId || "",
+    (payload) => sendRawMessageRef.current(payload),
+          (otherUserId: string, durationStr: string, missed: boolean, caller: boolean) => {
+        let textMarker = "";
+        if (missed) {
+          textMarker = "__system_call:missed";
+        } else {
+          textMarker = `__system_call:ended:${durationStr}`;
+        }
+
+        if (caller) {
+          try {
+            const displayName = getDisplayName(localStorage.getItem("displayName"), localUserId);
+            sendWsMessageRef.current(textMarker, otherUserId, displayName);
+            setMessages((prev) => ({
+              ...prev,
+              [otherUserId]: [
+                ...(prev[otherUserId] || []),
+                {
+                  senderId: localUserId || "system",
+                  senderName: displayName,
+                  text: textMarker,
+                  timestamp: new Date().toISOString(),
+                },
+              ],
+            }));
+          } catch (e) {
+            console.error("Failed", e);
+          }
+        }
+      }
+    );
+
+  const { sendMessage: sendWsMessage, sendRawMessage, socketStatus } = useWebSocket(token, (parsed: any) => {
     try {
+      if (["call_offer", "call_answer", "ice_candidate", "call_reject", "call_end", "call_ring"].includes(parsed.type)) {
+        webRTC.handleWebRTCSignal(parsed);
+        return;
+      }
+
       if (parsed.contacts && Array.isArray(parsed.contacts)) {
         setRecentChats((prev) => {
           const selfDisplayName = getDisplayName(localStorage.getItem("displayName"), localUserId);
@@ -232,6 +276,14 @@ const ChatWrapper: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
     }
   });
 
+  useEffect(() => {
+    sendWsMessageRef.current = sendWsMessage;
+  }, [sendWsMessage]);
+
+  useEffect(() => {
+    sendRawMessageRef.current = sendRawMessage;
+  }, [sendRawMessage]);
+
   const handleSelectChat = (userId: string, displayName?: string) => {
     setSelectedChat(userId);
     resetUnreadCount(userId);
@@ -278,17 +330,27 @@ const ChatWrapper: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
   };
 
   return (
-    <ChatPage
-      selectedChat={selectedChat}
-      recentChats={recentChats}
-      unreadCounts={unreadCounts}
-      messages={messages}
-      onSendMessage={sendMessage}
-      onLogout={onLogout}
-      onSelectChat={handleSelectChat}
-      socketStatus={socketStatus}
-      onlineUsers={onlineUsers}
-    />
+    <>
+      <ChatPage
+        selectedChat={selectedChat}
+        recentChats={recentChats}
+        unreadCounts={unreadCounts}
+        messages={messages}
+        onSendMessage={sendMessage}
+        onLogout={onLogout}
+        onSelectChat={handleSelectChat}
+        onStartCall={webRTC.initiateCall}
+        socketStatus={socketStatus}
+        onlineUsers={onlineUsers}
+      />
+      <CallOverlay 
+        callState={webRTC.callState}
+        remoteStream={webRTC.remoteStream}
+        onAccept={webRTC.acceptCall}
+        onReject={() => webRTC.rejectCall()}
+        onHangup={() => webRTC.rejectCall()}
+      />
+    </>
   );
 };
 
@@ -324,5 +386,20 @@ const App: React.FC = () => {
 };
 
 export default App;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 

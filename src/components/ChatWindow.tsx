@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Search, LogOut, Settings, Menu, MessageCircle, Wifi, WifiOff } from "lucide-react";
+import { Search, LogOut, Settings, Menu, MessageCircle, Wifi, WifiOff, Phone } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -25,6 +25,7 @@ interface ChatWindowProps {
   onSendMessage: (message: string, recipientUserId: string) => void;
   onLogout: () => void;
   onSelectChat: (chatId: string, displayName?: string) => void;
+  onStartCall: (userId: string, displayName: string) => void;
   recentChats: RecentChat[];
   onToggleSidebar?: () => void; // For mobile drawer toggle
   isMobile?: boolean; // NEW: tell if mobile
@@ -38,6 +39,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   onSendMessage,
   onLogout,
   onSelectChat,
+  onStartCall,
   recentChats,
   onToggleSidebar,
   isMobile = false,
@@ -150,18 +152,34 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           )}
         </div>
 
-        {/* Connection Status Indicator (peer presence only) */}
-        <div className="flex items-center gap-2">
+        {/* Connection Status Indicator & Call Button */}
+        <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4">
           {selectedChat && (
-            <div className="flex items-center gap-1 text-[11px] sm:text-xs text-white/80">
-              <span
-                className={
-                  "inline-block w-2 h-2 rounded-full " +
-                  (peerOnline ? "bg-green-400" : "bg-gray-400")
-                }
-              ></span>
-              <span>{peerOnline ? "Online" : "Offline"}</span>
-            </div>
+            <>
+              {userId !== selectedChat && (
+                <button
+                  onClick={() => onStartCall(selectedChat, selectedChatDisplayName)}
+                  disabled={!peerOnline}
+                  className={`p-2 rounded-full transition-colors ${
+                    peerOnline
+                      ? "bg-green-500 hover:bg-green-600 shadow-md text-white"
+                      : "bg-gray-400 text-gray-200 cursor-not-allowed opacity-70"
+                  }`}
+                  title={peerOnline ? "Start Voice Call" : "User is Offline"}
+                >
+                  <Phone size={18} />
+                </button>
+              )}
+              <div className="flex items-center gap-1 text-[11px] sm:text-xs text-white/80">
+                <span
+                  className={
+                    "inline-block w-2 h-2 rounded-full " +
+                    (peerOnline ? "bg-green-400" : "bg-gray-400")
+                  }
+                ></span>
+                <span>{peerOnline ? "Online" : "Offline"}</span>
+              </div>
+            </>
           )}
         </div>
 
@@ -251,12 +269,35 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
             const tsToParse = rawTs ? (rawTs.endsWith('Z') || rawTs.includes('+') ? rawTs : rawTs + 'Z') : undefined;
             const timeString = tsToParse ? new Date(tsToParse).toLocaleString([], { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : "Now";
 
-            return (
-              <div
-                key={idx}
-                className={`flex flex-col max-w-[75%] mb-1 ${
-                  isOwn ? "ml-auto items-end" : "mr-auto items-start"
-                }`}
+                          if (msg.text.startsWith("__system_call:")) {
+                const parts = msg.text.split(":");
+                let sysText = "Call information";
+                if (parts[1] === "missed") {
+                  sysText = isOwn ? "Call unanswered \u260E" : "Missed call \u260E";
+                } else if (parts[1] === "ended") {
+                  sysText = `Call ended \u260E Duration: `;
+                }
+                
+                return (
+                  <div key={idx} className="w-full flex flex-col items-center my-3 relative group cursor-pointer" onClick={() => setClickedMessageIdx(clickedMessageIdx === idx ? null : idx)}>
+                    <div className="bg-gray-100 border border-gray-200 text-gray-500 text-xs py-1.5 px-4 rounded-full shadow-sm">
+                      {sysText}
+                    </div>
+                    {clickedMessageIdx === idx && (
+                      <div className="mt-1 text-[10px] text-gray-400 select-none animate-in fade-in slide-in-from-top-1">
+                        {timeString}
+                      </div>
+                    )}
+                  </div>
+                );
+              }
+
+              return (
+                <div
+                  key={idx}
+                  className={`flex flex-col max-w-[75%] mb-1 ${
+                    isOwn ? "ml-auto items-end" : "mr-auto items-start"
+                  }`}
               >
                 <div
                   onClick={() => setClickedMessageIdx(clickedMessageIdx === idx ? null : idx)}
@@ -312,6 +353,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 };
 
 export default ChatWindow;
+
+
+
 
 
 

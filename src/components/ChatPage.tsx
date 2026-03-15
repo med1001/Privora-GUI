@@ -11,6 +11,7 @@ const ChatPage = ({
   onSendMessage,
   onLogout,
   onSelectChat,
+  onStartCall,
   socketStatus,
   onlineUsers,
 }: any) => {
@@ -36,6 +37,7 @@ const ChatPage = ({
           onSendMessage={onSendMessage}
           onLogout={onLogout}
           onSelectChat={onSelectChat}
+          onStartCall={onStartCall}
           recentChats={recentChats}
           onToggleSidebar={() => setMobileSidebarOpen(true)}
           socketStatus={socketStatus}

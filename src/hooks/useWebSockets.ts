@@ -33,8 +33,7 @@ const useWebSocket = (
 
       socketConnection.onmessage = (event) => {
         try {
-          const data = JSON.parse(event.data);
-
+          const data = JSON.parse(event.data);            console.log('[WebSocket] Received message type:', data.type, data);
           if (data.type === "message") {
             console.log(`[WebSocket] Message from ${data.from} to ${data.to}: ${data.message}`);
           } else {
@@ -82,7 +81,13 @@ const useWebSocket = (
     }
   };
 
-  return { sendMessage, socketStatus };
+  const sendRawMessage = (payload: any) => {
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify(payload));
+    }
+  };
+
+  return { sendMessage, sendRawMessage, socketStatus };
 };
 
 export default useWebSocket;
