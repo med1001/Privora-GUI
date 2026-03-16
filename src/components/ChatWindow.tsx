@@ -275,7 +275,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                 if (parts[1] === "missed") {
                   sysText = isOwn ? "Call unanswered \u260E" : "Missed call \u260E";
                 } else if (parts[1] === "ended") {
-                  sysText = `Call ended \u260E Duration: `;
+                  const minutes = parts[2] || "00";
+                  const seconds = parts[3] || "00";
+                  sysText = `Call ended \u260E Duration: ${minutes}:${seconds}`;
                 }
                 
                 return (

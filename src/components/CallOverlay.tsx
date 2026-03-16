@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Phone, PhoneOff, User } from 'lucide-react';
 import { CallState } from '../hooks/useWebRTC';
 
@@ -13,7 +13,24 @@ interface CallOverlayProps {
 const CallOverlay: React.FC<CallOverlayProps> = ({ callState, remoteStream, onAccept, onReject, onHangup }) => {
   const audioRef = useRef<HTMLAudioElement>(null);
   const ringtoneRef = useRef<HTMLAudioElement>(null);
-  
+  const [duration, setDuration] = useState(0);
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (callState.status === 'connected') {
+      interval = setInterval(() => setDuration(p => p + 1), 1000);
+    } else {
+      setDuration(0);
+    }
+    return () => clearInterval(interval);
+  }, [callState.status]);
+
+  const formatDuration = (seconds: number) => {
+    const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+    const s = (seconds % 60).toString().padStart(2, '0');
+    return `${m}:${s}`;
+  };
+
   // Play ringtone if calling or ringing
   useEffect(() => {
     if (callState.status === 'calling' || callState.status === 'ringing') {
@@ -56,7 +73,7 @@ const CallOverlay: React.FC<CallOverlayProps> = ({ callState, remoteStream, onAc
         <p className="text-gray-500 mb-8 animate-pulse text-sm">
           {callState.status === 'calling' && 'Calling...'}
           {callState.status === 'ringing' && 'Incoming Call...'}
-          {callState.status === 'connected' && 'Call Connected'}
+          {callState.status === 'connected' && formatDuration(duration)}
         </p>
         
         <div className="flex items-center gap-6">
