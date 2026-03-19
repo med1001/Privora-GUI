@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Search, LogOut, Settings, Menu, MessageCircle, Wifi, WifiOff, Phone } from "lucide-react";
+import { Search, LogOut, Settings, Menu, MessageCircle, Wifi, WifiOff, Phone, Mic, Square, Send as SendIcon } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -51,6 +51,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const [suggestions, setSuggestions] = useState<UserSuggestion[]>([]);
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false); // Track if message is being sent
+  const [isRecording, setIsRecording] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
   const [clickedMessageIdx, setClickedMessageIdx] = useState<number | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -121,6 +124,49 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     onSelectChat(user.userId, user.displayName);
     setSearch("");
     setSuggestions([]);
+  };
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+        const reader = new FileReader();
+        reader.readAsDataURL(audioBlob);
+        reader.onloadend = () => {
+          const base64Audio = reader.result as string;
+          if (selectedChat) {
+            setSending(true);
+            onSendMessage(`__system_audio:${base64Audio}`, selectedChat);
+            setTimeout(() => setSending(false), 300);
+          }
+        };
+        stream.getTracks().forEach((track) => track.stop());
+      };
+
+      mediaRecorder.start();
+      setIsRecording(true);
+    } catch (error) {
+      console.error("Error accessing microphone:", error);
+      alert("Microphone access is required to send voice messages.");
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+    }
   };
 
   const send = () => {
@@ -294,6 +340,22 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                 );
               }
 
+              if (msg.text.startsWith("__system_audio:")) {
+                const audioBase64 = msg.text.replace("__system_audio:", "");
+                return (
+                  <div key={idx} className={`flex flex-col max-w-[75%] mb-1 ${isOwn ? "ml-auto items-end" : "mr-auto items-start"}`}>
+                    <div onClick={() => setClickedMessageIdx(clickedMessageIdx === idx ? null : idx)} className={`py-2 px-3 rounded-xl shadow-sm relative group cursor-pointer transition-all ${isOwn ? "bg-blue-600 text-white rounded-br-sm" : "bg-white border border-gray-200 text-black rounded-bl-sm"}`}>
+                      <audio controls src={audioBase64} className="h-10 w-48" />
+                    </div>
+                    {clickedMessageIdx === idx && (
+                      <div className={`text-[11px] mt-1 px-1 select-none flex items-center opacity-70 animate-in fade-in slide-in-from-top-1 ${isOwn ? "text-gray-500 justify-end" : "text-gray-500 justify-start"}`}>
+                        {timeString}
+                      </div>
+                    )}
+                  </div>
+                );
+              }
+
               return (
                 <div
                   key={idx}
@@ -325,30 +387,64 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       </div>
 
       {/* Input */}
-      <div className="p-3 border-t bg-gray-100 flex items-center gap-2">
-        <input
-          type="text"
-          className="flex-grow min-w-0 p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-200"
-          placeholder={selectedChat ? "Type a message..." : "Select a user to start"}
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && !sending && send()}
-          disabled={!selectedChat || sending}
-        />
-        <button
-          onClick={send}
-          className="flex-shrink-0 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-800 transition disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
-          disabled={!selectedChat || sending}
-        >
-          {sending ? (
-            <>
-              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-              <span className="hidden sm:inline">Sending...</span>
-            </>
-          ) : (
-            "Send"
-          )}
-        </button>
+      <div className="p-3 bg-white border-t flex items-center gap-2">
+        {/* Mic Button (Left side, only empty text & not recording) */}
+        {(!message.trim() && !isRecording) && (
+          <button
+            onClick={startRecording}
+            className="flex-shrink-0 text-gray-500 hover:text-blue-600 hover:bg-blue-50 p-2.5 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={!selectedChat || sending}
+            title="Record Voice Message"
+          >
+            <Mic size={22} />
+          </button>
+        )}
+
+        {isRecording ? (
+          <div className="flex-grow min-w-0 h-11 px-4 border border-red-200 rounded-full bg-red-50 flex items-center justify-between text-red-500 font-medium">
+            <div className="flex items-center gap-2 animate-pulse">
+              <div className="w-2.5 h-2.5 rounded-full bg-red-500"></div>
+              <span>Recording...</span>
+            </div>
+            <button 
+              onClick={stopRecording} 
+              className="text-red-700 hover:bg-red-200 rounded-full p-1.5 transition-colors"
+              title="Stop and Send"
+            >
+              <Square size={16} fill="currentColor" />
+            </button>
+          </div>
+        ) : (
+          <input
+            type="text"
+            className="flex-grow min-w-0 h-11 px-4 border border-gray-300 rounded-full focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 disabled:bg-gray-100 transition-all bg-gray-50"
+            placeholder={selectedChat ? "Message..." : "Select a user to start"}
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && !sending && message.trim() && send()}
+            disabled={!selectedChat || sending}
+          />
+        )}
+        
+        {/* Send Button (Right side, disabled if empty text) */}
+        {!isRecording && (
+          <button
+            onClick={send}
+            className={`flex-shrink-0 flex items-center justify-center w-11 h-11 rounded-full transition-all text-white shadow-sm ${
+              message.trim() && selectedChat && !sending
+                ? 'bg-blue-600 hover:bg-blue-700 cursor-pointer'
+                : 'bg-blue-300 cursor-not-allowed'
+            }`}
+            disabled={!selectedChat || sending || !message.trim()}
+            title="Send Message"
+          >
+            {sending ? (
+              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+            ) : (
+              <SendIcon size={18} className="ml-1" />
+            )}
+          </button>
+        )}
       </div>
     </div>
   );
