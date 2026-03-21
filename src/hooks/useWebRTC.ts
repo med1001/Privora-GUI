@@ -1,7 +1,7 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 
 export interface CallState {
-  status: "idle" | "calling" | "ringing" | "connected";
+  status: "idle" | "calling" | "calling_offline" | "ringing" | "connected";
   peerId: string | null;
   peerName: string | null;
   isIncoming: boolean;
@@ -166,9 +166,12 @@ export const useWebRTC = (
           await pc.setRemoteDescription(new RTCSessionDescription(parsed.offer));
           sendRawMessage({ type: 'call_ring', to: from });
       }, 0);
-    } 
+    }
     else if (type === 'call_ring') {
-      // Just acknowledgement that remote is ringing
+      setCallState(s => (s.status === 'calling' || s.status === 'calling_offline' ? { ...s, status: 'calling' } : s));
+    }
+    else if (type === 'call_ring_offline') {
+      setCallState(s => (s.status === 'calling' ? { ...s, status: 'calling_offline' } : s));
     }
     else if (type === 'call_answer') {
       if (pcRef.current) {
@@ -186,6 +189,19 @@ export const useWebRTC = (
       cleanupCall(true);
     }
   }, [createPeerConnection, sendRawMessage, cleanupCall]);
+
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (callState.status !== 'idle' && callState.peerId) {
+        // Send raw beacon for closing to ensure delivery
+        // Since WebSocket might be closing, sendRawMessage should handle it,
+        // but typically synchronous WebSocket.send still works in beforeunload.
+        sendRawMessage({ type: 'call_end', to: callState.peerId });
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [callState.status, callState.peerId, sendRawMessage]);
 
   return {
     callState,
