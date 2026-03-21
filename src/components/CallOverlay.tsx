@@ -31,22 +31,40 @@ const CallOverlay: React.FC<CallOverlayProps> = ({ callState, remoteStream, onAc
     return `${m}:${s}`;
   };
 
-  // Play ringtone if calling or ringing
+  // Play ringtone if calling or ringing and handle abort timeout
   useEffect(() => {
-    if (callState.status === 'calling' || callState.status === 'ringing') {
+    let abortTimeout: NodeJS.Timeout;
+    
+    if (callState.status === 'calling' || callState.status === 'calling_offline' || callState.status === 'ringing') {
         const audio = ringtoneRef.current;
         if (audio) {
-          audio.src = callState.status === 'calling' ? '/assets/calling.mp3' : '/assets/ringing.mp3';
+          if (callState.status === 'calling_offline') {
+            audio.src = '/assets/offline_calling.wav';
+          } else {
+            audio.src = callState.status === 'calling' ? '/assets/calling.mp3' : '/assets/ringing.mp3';
+          }
           audio.loop = true;
           audio.play().catch(e => console.log('Audio error:', e));
         }
+
+        // Auto abort after 45 seconds of ringing
+        abortTimeout = setTimeout(() => {
+          console.log("[CallOverlay] Auto-aborting call due to timeout (no response)");
+          if (callState.isIncoming) {
+            onReject();
+          } else {
+            onHangup();
+          }
+        }, 45000);
     } else {
         if (ringtoneRef.current) {
             ringtoneRef.current.pause();
             ringtoneRef.current.currentTime = 0;
         }
     }
-  }, [callState.status]);
+    
+    return () => clearTimeout(abortTimeout);
+  }, [callState.status, callState.isIncoming, onHangup, onReject]);
 
   // Attach remote stream when connected
   useEffect(() => {

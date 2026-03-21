@@ -127,7 +127,7 @@ const ChatWrapper: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
 
   const { sendMessage: sendWsMessage, sendRawMessage, socketStatus } = useWebSocket(token, (parsed: any) => {
     try {
-      if (["call_offer", "call_answer", "ice_candidate", "call_reject", "call_end", "call_ring"].includes(parsed.type)) {
+      if (["call_offer", "call_answer", "ice_candidate", "call_reject", "call_end", "call_ring", "call_ring_offline"].includes(parsed.type)) {
         webRTC.handleWebRTCSignal(parsed);
         return;
       }

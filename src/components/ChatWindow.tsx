@@ -205,13 +205,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
               {userId !== selectedChat && (
                 <button
                   onClick={() => onStartCall(selectedChat, selectedChatDisplayName)}
-                  disabled={!peerOnline}
-                  className={`p-2 rounded-full transition-colors ${
-                    peerOnline
-                      ? "bg-green-500 hover:bg-green-600 shadow-md text-white"
-                      : "bg-gray-400 text-gray-200 cursor-not-allowed opacity-70"
-                  }`}
-                  title={peerOnline ? "Start Voice Call" : "User is Offline"}
+                  className="p-2 rounded-full transition-colors bg-green-500 hover:bg-green-600 shadow-md text-white"
+                  title="Start Voice Call"
                 >
                   <Phone size={18} />
                 </button>
