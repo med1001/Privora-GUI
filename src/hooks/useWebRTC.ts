@@ -57,7 +57,15 @@ export const useWebRTC = (
     }, [onCallEnded]);
 
     const createPeerConnection = useCallback((peerId: string) => {
-    const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+      const pc = new RTCPeerConnection({ 
+        iceServers: [
+          { urls: 'stun:stun.l.google.com:19302' },
+          { urls: 'stun:stun1.l.google.com:19302' },
+          { urls: 'stun:stun2.l.google.com:19302' },
+          { urls: 'stun:stun3.l.google.com:19302' },
+          { urls: 'stun:stun4.l.google.com:19302' }
+        ] 
+      });
     pc.onicecandidate = (event) => {
       if (event.candidate) {
         sendRawMessage({ type: 'ice_candidate', to: peerId, candidate: event.candidate });
