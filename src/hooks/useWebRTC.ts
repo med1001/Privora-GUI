@@ -34,6 +34,7 @@ export const useWebRTC = (
         localStreamRef.current = null;
       }
       if (pcRef.current) {
+        pcRef.current.onconnectionstatechange = null;
         pcRef.current.close();
         pcRef.current = null;
       }
@@ -96,6 +97,11 @@ export const useWebRTC = (
   const initiateCall = useCallback(async (peerId: string, peerName: string) => {
     setCallState({ status: "calling", peerId, peerName, isIncoming: false });
     try {
+      if (pcRef.current) {
+        pcRef.current.onconnectionstatechange = null;
+        pcRef.current.close();
+        pcRef.current = null;
+      }
       const stream = await navigator.mediaDevices.getUserMedia(AUDIO_CONSTRAINTS);
       localStreamRef.current = stream;
       const pc = createPeerConnection(peerId);
@@ -176,7 +182,11 @@ export const useWebRTC = (
         };
       });
       setTimeout(async () => {
-          if (pcRef.current) pcRef.current.close();
+          if (pcRef.current) {
+            pcRef.current.onconnectionstatechange = null;
+            pcRef.current.close();
+            pcRef.current = null;
+          }
           const pc = createPeerConnection(from);
           await pc.setRemoteDescription(new RTCSessionDescription(parsed.offer));
           
@@ -216,6 +226,11 @@ export const useWebRTC = (
     else if (type === 'call_reject') {
       if (parsed.reason === 'offline') {
         setCallState(s => (s.status === 'calling' ? { ...s, status: 'calling_offline' } : s));
+        if (pcRef.current) {
+          pcRef.current.onconnectionstatechange = null;
+          pcRef.current.close();
+          pcRef.current = null;
+        }
       } else {
         cleanupCall(true);
       }
