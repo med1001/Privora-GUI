@@ -7,6 +7,14 @@ export interface CallState {
   isIncoming: boolean;
 }
 
+const AUDIO_CONSTRAINTS = {
+  audio: {
+    echoCancellation: true,
+    noiseSuppression: true,
+    autoGainControl: true
+  }
+};
+
 export const useWebRTC = (
   localUserId: string,
   sendRawMessage: (data: any) => void,
@@ -18,6 +26,7 @@ export const useWebRTC = (
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
   const callStartTimeRef = useRef<number | null>(null);
+  const iceCandidateQueueRef = useRef<any[]>([]);
 
   const cleanupCall = useCallback((recordEnd: boolean = true) => {
       if (localStreamRef.current) {
@@ -29,6 +38,7 @@ export const useWebRTC = (
         pcRef.current = null;
       }
       setRemoteStream(null);
+      iceCandidateQueueRef.current = [];
 
       const endTime = Date.now();
       const startTime = callStartTimeRef.current;
@@ -57,14 +67,14 @@ export const useWebRTC = (
     }, [onCallEnded]);
 
     const createPeerConnection = useCallback((peerId: string) => {
-      const pc = new RTCPeerConnection({ 
+      const pc = new RTCPeerConnection({
         iceServers: [
           { urls: 'stun:stun.l.google.com:19302' },
           { urls: 'stun:stun1.l.google.com:19302' },
           { urls: 'stun:stun2.l.google.com:19302' },
           { urls: 'stun:stun3.l.google.com:19302' },
           { urls: 'stun:stun4.l.google.com:19302' }
-        ] 
+        ]
       });
     pc.onicecandidate = (event) => {
       if (event.candidate) {
@@ -85,18 +95,17 @@ export const useWebRTC = (
 
   const initiateCall = useCallback(async (peerId: string, peerName: string) => {
     setCallState({ status: "calling", peerId, peerName, isIncoming: false });
-
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia(AUDIO_CONSTRAINTS);
       localStreamRef.current = stream;
       const pc = createPeerConnection(peerId);
       stream.getTracks().forEach(track => pc.addTrack(track, stream));
 
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
-      
+
       const selfDisplayNameStr = localStorage.getItem("displayName") || "User";
-      
+
       sendRawMessage({
         type: 'call_offer',
         to: peerId,
@@ -113,12 +122,12 @@ export const useWebRTC = (
   const acceptCall = useCallback(async () => {
     if (callState.status !== 'ringing' || !callState.peerId) return;
     const peerId = callState.peerId;
-    
+
     setCallState(s => ({ ...s, status: "connected" }));
     callStartTimeRef.current = Date.now();
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia(AUDIO_CONSTRAINTS);
       localStreamRef.current = stream;
       const pc = pcRef.current;
       if (!pc) return;
@@ -149,11 +158,10 @@ export const useWebRTC = (
     cleanupCall(true);
   }, [callState.peerId, sendRawMessage, cleanupCall]);
 
-  // Expose handler for incoming websocket messages
   const handleWebRTCSignal = useCallback(async (parsed: any) => {
     const type = parsed.type;
     const from = parsed.from;
-    
+
     if (type === 'call_offer') {
       setCallState(prev => {
         if (prev.status !== 'idle') {
@@ -167,11 +175,16 @@ export const useWebRTC = (
           isIncoming: true
         };
       });
-      // Delay async because state update hasn't fired
       setTimeout(async () => {
           if (pcRef.current) pcRef.current.close();
           const pc = createPeerConnection(from);
           await pc.setRemoteDescription(new RTCSessionDescription(parsed.offer));
+          
+          iceCandidateQueueRef.current.forEach(candidate => {
+            pc.addIceCandidate(new RTCIceCandidate(candidate)).catch(e => console.log('ICE err', e));
+          });
+          iceCandidateQueueRef.current = [];
+
           sendRawMessage({ type: 'call_ring', to: from });
       }, 0);
     }
@@ -186,14 +199,28 @@ export const useWebRTC = (
         await pcRef.current.setRemoteDescription(new RTCSessionDescription(parsed.answer));
         setCallState(s => ({ ...s, status: "connected" }));
         callStartTimeRef.current = Date.now();
+        
+        iceCandidateQueueRef.current.forEach(candidate => {
+            pcRef.current?.addIceCandidate(new RTCIceCandidate(candidate)).catch(e => console.log('ICE err', e));
+        });
+        iceCandidateQueueRef.current = [];
       }
     }
     else if (type === 'ice_candidate') {
-      if (pcRef.current) {
+      if (pcRef.current && pcRef.current.remoteDescription) {
         pcRef.current.addIceCandidate(new RTCIceCandidate(parsed.candidate)).catch(e => console.log('ICE err', e));
+      } else {
+        iceCandidateQueueRef.current.push(parsed.candidate);
       }
     }
-    else if (type === 'call_reject' || type === 'call_end') {
+    else if (type === 'call_reject') {
+      if (parsed.reason === 'offline') {
+        setCallState(s => (s.status === 'calling' ? { ...s, status: 'calling_offline' } : s));
+      } else {
+        cleanupCall(true);
+      }
+    }
+    else if (type === 'call_end') {
       cleanupCall(true);
     }
   }, [createPeerConnection, sendRawMessage, cleanupCall]);
@@ -201,9 +228,6 @@ export const useWebRTC = (
   useEffect(() => {
     const handleBeforeUnload = () => {
       if (callState.status !== 'idle' && callState.peerId) {
-        // Send raw beacon for closing to ensure delivery
-        // Since WebSocket might be closing, sendRawMessage should handle it,
-        // but typically synchronous WebSocket.send still works in beforeunload.
         sendRawMessage({ type: 'call_end', to: callState.peerId });
       }
     };
@@ -221,5 +245,3 @@ export const useWebRTC = (
     handleWebRTCSignal
   };
 };
-
-
