@@ -7,6 +7,8 @@ import CallOverlay from "./components/CallOverlay";
 import useWebSocket from "./hooks/useWebSockets";
 import { useWebRTC } from "./hooks/useWebRTC";
 import { useUnreadCounts } from "./hooks/useUnreadCounts";
+import { onIdTokenChanged, signOut } from "firebase/auth";
+import { auth } from "./firebase-config";
 
 export interface MessageObj {
   senderId: string;
@@ -53,7 +55,7 @@ const getDisplayName = (rawDisplayName: string | undefined | null, userId: strin
 };
 
 //  EXTRACT CHAT WRAPPER LOGIC OUT OF App FOR CLEANLINESS
-const ChatWrapper: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
+const ChatWrapper: React.FC<{ onLogout: () => void; token: string }> = ({ onLogout, token }) => {
   const [selectedChat, setSelectedChat] = useState<string | null>(null);
   const [messages, setMessages] = useState<Messages>({});
   const [recentChats, setRecentChats] = useState<UserSummary[]>([]);
@@ -66,7 +68,6 @@ const ChatWrapper: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
     } catch (e) {}
   };
 
-  const token = localStorage.getItem("token");
   const localUserId = localStorage.getItem("userId");
 
   // Initialize with self-chat for notes on component mount
@@ -125,9 +126,11 @@ const ChatWrapper: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
       }
     );
 
-  const { sendMessage: sendWsMessage, sendRawMessage, socketStatus } = useWebSocket(token, (parsed: any) => {
-    try {
-      if (["call_offer", "call_answer", "ice_candidate", "call_reject", "call_end", "call_ring", "call_ring_offline"].includes(parsed.type)) {
+  const { sendMessage: sendWsMessage, sendRawMessage, socketStatus } = useWebSocket(
+    token, 
+    (parsed: any) => {
+      try {
+        if (["call_offer", "call_answer", "ice_candidate", "call_reject", "call_end", "call_ring", "call_ring_offline"].includes(parsed.type)) {
         webRTC.handleWebRTCSignal(parsed);
         return;
       }
@@ -274,7 +277,7 @@ const ChatWrapper: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
     } catch (err) {
       console.error("Invalid WebSocket JSON:", parsed, err);
     }
-  });
+  }, onLogout);
 
   useEffect(() => {
     sendWsMessageRef.current = sendWsMessage;
@@ -355,30 +358,62 @@ const ChatWrapper: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
 };
 
 const App: React.FC = () => {
-  // Initialize auth state from localStorage so a refresh on /chat
-  // does not briefly treat the user as unauthenticated and redirect.
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => !!localStorage.getItem("token"));
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [token, setToken] = useState<string | null>(null);
+  const [authLoading, setAuthLoading] = useState<boolean>(true);
   const navigate = useNavigate();
 
-  const login = (token: string) => {
-    localStorage.setItem("token", token);
-    setIsAuthenticated(true);
-    navigate("/chat");
+  useEffect(() => {
+    // Firebase automatically handles session storage and keep-alive refresh tokens
+    const unsubscribe = onIdTokenChanged(auth, async (user) => {
+      if (user && user.emailVerified) {
+        try {
+          const freshToken = await user.getIdToken();
+          localStorage.setItem("userId", user.email || user.uid);
+          localStorage.setItem("displayName", user.displayName || user.email || "");
+          setToken(freshToken);
+          setIsAuthenticated(true);
+        } catch (err) {
+          // If token fetch fails, force logout
+          setToken(null);
+          setIsAuthenticated(false);
+          localStorage.clear();
+        }
+      } else {
+        setToken(null);
+        setIsAuthenticated(false);
+        localStorage.clear();
+      }
+      setAuthLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const login = (newToken: string) => {
+    // Firebase onIdTokenChanged will automatically pick up the login,
+    // but giving direct feedback helps in case of delays.
   };
 
-  const logout = () => {
+  const logout = async () => {
+    await signOut(auth);
     localStorage.clear();
     setIsAuthenticated(false);
+    setToken(null);
     navigate("/login");
   };
 
+  if (authLoading) {
+    return <div className="h-screen w-full flex items-center justify-center bg-[#f9fafb]">Log into Privora...</div>;
+  }
+
   return (
     <Routes>
-      <Route path="/login" element={<Login onLogin={login} />} />
-      <Route path="/register" element={<Register />} />
+      <Route path="/login" element={isAuthenticated ? <Navigate to="/chat" /> : <Login onLogin={login} />} />
+      <Route path="/register" element={isAuthenticated ? <Navigate to="/chat" /> : <Register />} />
       <Route
         path="/chat"
-        element={isAuthenticated ? <ChatWrapper onLogout={logout} /> : <Navigate to="/login" />}
+        element={isAuthenticated && token ? <ChatWrapper onLogout={logout} token={token} /> : <Navigate to="/login" />}
       />
       <Route path="*" element={<Navigate to={isAuthenticated ? "/chat" : "/login"} />} />
     </Routes>

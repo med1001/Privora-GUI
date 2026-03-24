@@ -72,19 +72,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
         return;
       }
 
-      const token = await userCredential.user.getIdToken();
-      localStorage.setItem("token", token);
-      localStorage.setItem(
-        "userId",
-        userCredential.user.email || userCredential.user.uid
-      );
-      localStorage.setItem(
-        "displayName",
-        userCredential.user.displayName || userCredential.user.email || ""
-      );
-
-      onLogin(token);
-      navigate("/chat");
+      // Let App.tsx (via onIdTokenChanged) handle everything!
     } catch (err: any) {
       const firebaseError = err.message || "Login error.";
       setError(firebaseError);
