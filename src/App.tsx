@@ -256,7 +256,13 @@ const ChatWrapper: React.FC<{ onLogout: () => void; token: string }> = ({ onLogo
           return Array.from(chatMap.values());
         });
       } else if (parsed.type === "presence" && parsed.userId && parsed.status) {
+         
         const { userId, status } = parsed;
+        if (status === 'online' && webRTC.callState.status === 'calling_offline' && webRTC.callState.peerId === userId) {
+          console.log('[WebRTC] Target user came online! Auto-redialing...');
+          webRTC.initiateCall(userId, webRTC.callState.peerName || userId);
+        }
+         
 
         setOnlineUsers((prev) => ({
           ...prev,
