@@ -9,6 +9,8 @@ const useWebSocket = (
   const [socketStatus, setSocketStatus] = useState("disconnected");
   const onMessageReceivedRef = useRef(onMessageReceived);
   const onAuthErrorRef = useRef(onAuthError);
+  const attemptRef = useRef(0);
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     onMessageReceivedRef.current = onMessageReceived;
@@ -19,33 +21,32 @@ const useWebSocket = (
   }, [onAuthError]);
 
   useEffect(() => {
-    if (token) {
-      // Use environment variable or fallback to localhost
-      const wsUrl =
-      process.env.REACT_APP_WS_URL ||
-      (window.location.protocol === "https:" ? "wss://" : "ws://") + window.location.host + "/ws";
+    let socketConnection: WebSocket | null = null;
+    let isMounted = true;
 
-      const socketConnection = new WebSocket(wsUrl);
+    const connectWebSocket = () => {
+      if (!token || !isMounted) return;
+
+      const wsUrl = process.env.REACT_APP_WS_URL || (window.location.protocol === "https:" ? "wss://" : "ws://") + window.location.host + "/ws";
+      console.log(`[WebSocket] Connecting... attempt ${attemptRef.current}`);
+      setSocketStatus(attemptRef.current > 0 ? "reconnecting" : "connecting");
+      
+      socketConnection = new WebSocket(wsUrl);
 
       socketConnection.onopen = () => {
+        if (!isMounted) return;
         console.log("[WebSocket] Connected");
         setSocketStatus("connected");
+        attemptRef.current = 0; // Reset attempts on successful connection
 
         const loginMessage = { type: "login", token };
-        console.log("[WebSocket] Sending login message:", JSON.stringify(loginMessage));
-
-        socketConnection.send(JSON.stringify(loginMessage));
+        socketConnection?.send(JSON.stringify(loginMessage));
       };
 
       socketConnection.onmessage = (event) => {
+        if (!isMounted) return;
         try {
-          const data = JSON.parse(event.data);            console.log('[WebSocket] Received message type:', data.type, data);
-          if (data.type === "message") {
-            console.log(`[WebSocket] Message from ${data.from} to ${data.to}: ${data.message}`);
-          } else {
-            console.log("[WebSocket] Received non-message type:", data);
-          }
-
+          const data = JSON.parse(event.data);
           onMessageReceivedRef.current(data);
         } catch (err) {
           console.error("[WebSocket] Failed to parse incoming message:", event.data, err);
@@ -53,6 +54,7 @@ const useWebSocket = (
       };
 
       socketConnection.onclose = (event) => {
+        if (!isMounted) return;
         console.log("[WebSocket] Disconnected with code:", event.code, "reason:", event.reason);
         setSocketStatus("disconnected");
 
@@ -60,36 +62,47 @@ const useWebSocket = (
         // Best practice: clear local state and prompt re-login.
         if (event.code === 1008) {
           if (onAuthErrorRef.current) {
-            onAuthErrorRef.current();          }
+            onAuthErrorRef.current();
+          }
+          return; // Do not reconnect if the token is permanently rejected
         }
+
+        // Auto-reconnect with exponential backoff for normal network drops
+        const timeout = Math.min(1000 * Math.pow(2, attemptRef.current), 30000); // Max 30s
+        console.log(`[WebSocket] Reconnecting in ${timeout / 1000} seconds...`);
+        reconnectTimeoutRef.current = setTimeout(() => {
+          attemptRef.current += 1;
+          connectWebSocket();
+        }, timeout);
       };
+
       socketConnection.onerror = (error) => {
+        if (!isMounted) return;
         console.error("[WebSocket] Error:", error);
         setSocketStatus("error");
       };
 
       setSocket(socketConnection);
+    };
 
-      return () => {
-        console.log("[WebSocket] Closing connection...");
+    connectWebSocket();
+
+    return () => {
+      isMounted = false;
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+      }
+      if (socketConnection) {
+        console.log("[WebSocket] Closing connection via cleanup...");
         socketConnection.close();
-      };
-    }
+      }
+    };
   }, [token]);
 
   const sendMessage = (message: string, recipientEmail: string, fromDisplayName: string) => {
     if (socket && socket.readyState === WebSocket.OPEN) {
-      const payload = {
-        type: "message",
-        to: recipientEmail,
-        message,
-        fromDisplayName,
-      };
-
-      console.log("[WebSocket] Sending:", payload);
+      const payload = { type: "message", to: recipientEmail, message, fromDisplayName };
       socket.send(JSON.stringify(payload));
-    } else {
-      console.log("[WebSocket] Connection not open. Status:", socketStatus);
     }
   };
 
