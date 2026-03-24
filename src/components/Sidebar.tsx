@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Search } from "lucide-react";
+import { auth } from "../firebase-config";
 
 interface UserSuggestion {
   userId: string;
@@ -38,7 +39,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     }
 
     const fetchUsers = async () => {
-      const token = localStorage.getItem("token");
+      const token = await auth.currentUser?.getIdToken();
       if (!token) return;
 
       setLoading(true);

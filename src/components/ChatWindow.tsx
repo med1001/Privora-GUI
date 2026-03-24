@@ -8,6 +8,7 @@ import {
 } from "./dropdown-menu";
 
 import { MessageObj } from "../App";
+import { auth } from "../firebase-config";
 
 interface UserSuggestion {
   userId: string;
@@ -93,7 +94,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     }
 
     const fetchUsers = async () => {
-      const token = localStorage.getItem("token");
+      const token = await auth.currentUser?.getIdToken();
       if (!token) return;
 
       setLoading(true);

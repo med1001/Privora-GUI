@@ -2,15 +2,21 @@ import { useEffect, useRef, useState } from "react";
 
 const useWebSocket = (
   token: string | null,
-  onMessageReceived: (message: any) => void
+  onMessageReceived: (message: any) => void,
+  onAuthError?: () => void
 ) => {
   const [socket, setSocket] = useState<WebSocket | null>(null);
   const [socketStatus, setSocketStatus] = useState("disconnected");
   const onMessageReceivedRef = useRef(onMessageReceived);
+  const onAuthErrorRef = useRef(onAuthError);
 
   useEffect(() => {
     onMessageReceivedRef.current = onMessageReceived;
   }, [onMessageReceived]);
+
+  useEffect(() => {
+    onAuthErrorRef.current = onAuthError;
+  }, [onAuthError]);
 
   useEffect(() => {
     if (token) {
@@ -47,10 +53,16 @@ const useWebSocket = (
       };
 
       socketConnection.onclose = (event) => {
-        console.log("[WebSocket] Disconnected:", event.reason);
+        console.log("[WebSocket] Disconnected with code:", event.code, "reason:", event.reason);
         setSocketStatus("disconnected");
-      };
 
+        // Code 1008 indicates policy violation (e.g. invalid/expired token).
+        // Best practice: clear local state and prompt re-login.
+        if (event.code === 1008) {
+          if (onAuthErrorRef.current) {
+            onAuthErrorRef.current();          }
+        }
+      };
       socketConnection.onerror = (error) => {
         console.error("[WebSocket] Error:", error);
         setSocketStatus("error");
