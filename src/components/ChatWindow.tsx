@@ -108,6 +108,22 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   }, [messages]);
 
   useEffect(() => {
+    const handleGlobalClick = () => {
+      if (activeReactionMsgId) {
+        setActiveReactionMsgId(null);
+      }
+    };
+    
+    document.addEventListener("click", handleGlobalClick);
+    document.addEventListener("touchend", handleGlobalClick);
+    
+    return () => {
+      document.removeEventListener("click", handleGlobalClick);
+      document.removeEventListener("touchend", handleGlobalClick);
+    };
+  }, [activeReactionMsgId]);
+
+  useEffect(() => {
     if (!search.trim()) {
       setSuggestions([]);
       return;
@@ -401,11 +417,15 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                   )}
 
                   <div
-                    onClick={() => {                        if (isLongPressRef.current) {
+                    onClick={(e) => {
+                        if (isLongPressRef.current) {
                             isLongPressRef.current = false;
+                            e.stopPropagation();
                             return;
-                        }                        if (activeReactionMsgId === msg.msg_id) {
+                        }
+                        if (activeReactionMsgId === msg.msg_id) {
                             setActiveReactionMsgId(null);
+                            e.stopPropagation();
                             return;
                         }
                         setClickedMessageIdx(clickedMessageIdx === idx ? null : idx);
