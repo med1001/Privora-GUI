@@ -61,27 +61,29 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const [activeReactionMsgId, setActiveReactionMsgId] = useState<string | null>(null);
   const pressTimer = useRef<NodeJS.Timeout | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+    const isLongPressRef = useRef<boolean>(false);
 
-  const EMOJI_OPTIONS = ["👍", "❤️", "😂", "😮", "😢", "🔥"];
+    const EMOJI_OPTIONS = ["👍", "❤️", "😂", "😮", "😢", "🔥"];
 
-  const handlePressStart = (msg_id?: string) => {
-    if (!msg_id) return;
-    pressTimer.current = setTimeout(() => {
-      setActiveReactionMsgId(msg_id);
-    }, 500);
-  };
+    const handlePressStart = (msg_id?: string) => {
+      if (!msg_id) return;
+      isLongPressRef.current = false;
+      pressTimer.current = setTimeout(() => {
+        isLongPressRef.current = true;
+        setActiveReactionMsgId(msg_id);
+      }, 500);
+    };
 
-  const handlePressEnd = () => {
-    if (pressTimer.current) clearTimeout(pressTimer.current);
-  };
+    const handlePressEnd = () => {
+      if (pressTimer.current) clearTimeout(pressTimer.current);
+    };
 
-
-  const rawDisplayName = localStorage.getItem("displayName") || "User";
-  const displayName = (() => {
-    const trimmed = rawDisplayName.trim();
-    if (!trimmed) return "User";
-    if (trimmed.includes("@")) {
-      const localPart = trimmed.split("@")[0];
+    const rawDisplayName = localStorage.getItem("displayName") || "User";
+    const displayName = (() => {
+      const trimmed = rawDisplayName.trim();
+      if (!trimmed) return "User";
+      if (trimmed.includes("@")) {
+        const localPart = trimmed.split("@")[0];
       const base = localPart.split("+")[0];
       return base || trimmed;
     }
@@ -375,7 +377,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                   key={idx}
                   className={`flex flex-col max-w-[75%] mb-1 ${
                     isOwn ? "ml-auto items-end" : "mr-auto items-start"
-                  }`}
+                  } ${idx === 0 ? "mt-12" : ""}`}
               >
                 <div className="relative">
                   {activeReactionMsgId === msg.msg_id && (
@@ -399,8 +401,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                   )}
 
                   <div
-                    onClick={() => {
-                        if (activeReactionMsgId === msg.msg_id) {
+                    onClick={() => {                        if (isLongPressRef.current) {
+                            isLongPressRef.current = false;
+                            return;
+                        }                        if (activeReactionMsgId === msg.msg_id) {
                             setActiveReactionMsgId(null);
                             return;
                         }
