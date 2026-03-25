@@ -203,7 +203,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   return (
     <div className="flex flex-col h-full bg-white">
       {/* Header */}
-      <div className="bg-blue-700 text-white p-3 flex items-center justify-between gap-2">
+      <div className="bg-blue-700 text-white p-3 flex items-center justify-between gap-2 relative z-0">
         <div className="flex items-center gap-2">
           {/* Mobile Menu Button */}
           <button
@@ -310,7 +310,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
       {/* Messages */}
       <div
-        className="flex-grow p-3 overflow-y-auto space-y-3 flex flex-col"
+        className="flex-grow p-3 overflow-y-auto space-y-3 flex flex-col relative z-20"
         ref={scrollRef}
       >
         {!selectedChat ? (
@@ -377,7 +377,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                   key={idx}
                   className={`flex flex-col max-w-[75%] mb-1 ${
                     isOwn ? "ml-auto items-end" : "mr-auto items-start"
-                  } ${idx === 0 ? "mt-12" : ""}`}
+                  }`}
               >
                 <div className="relative">
                   {activeReactionMsgId === msg.msg_id && (
