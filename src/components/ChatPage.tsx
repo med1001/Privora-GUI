@@ -9,6 +9,7 @@ const ChatPage = ({
   unreadCounts,
   messages,
   onSendMessage,
+  onSendReaction,
   onLogout,
   onSelectChat,
   onStartCall,
@@ -35,6 +36,7 @@ const ChatPage = ({
           selectedChat={selectedChat}
           messages={messages[selectedChat] || []}
           onSendMessage={onSendMessage}
+          onSendReaction={onSendReaction}
           onLogout={onLogout}
           onSelectChat={onSelectChat}
           onStartCall={onStartCall}

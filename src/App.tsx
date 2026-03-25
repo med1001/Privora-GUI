@@ -11,10 +11,12 @@ import { onIdTokenChanged, signOut } from "firebase/auth";
 import { auth } from "./firebase-config";
 
 export interface MessageObj {
+  msg_id: string;
   senderId: string;
   senderName?: string;
   text: string;
   timestamp: string;
+  reactions?: { [userId: string]: string };
 }
 
 interface UserSummary {
@@ -156,11 +158,11 @@ const ChatWrapper: React.FC<{ onLogout: () => void; token: string }> = ({ onLogo
           return Array.from(chatMap.values());
         });
       } else if ((parsed.type === "message" || parsed.type === "offline") && parsed.from && parsed.message) {
-        const { from, message, fromDisplayName, type } = parsed;
+        const { from, message, fromDisplayName, type, msg_id, reactions } = parsed;
 
         setMessages((prev) => ({
           ...prev,
-            [from]: [...(prev[from] || []), { senderId: from, senderName: fromDisplayName || from, text: message, timestamp: parsed.timestamp || new Date().toISOString() }],
+            [from]: [...(prev[from] || []), { msg_id, senderId: from, senderName: fromDisplayName || from, text: message, timestamp: parsed.timestamp || new Date().toISOString(), reactions: reactions || {} }],
         }));
 
         setRecentChats((prev) => {
@@ -184,6 +186,29 @@ const ChatWrapper: React.FC<{ onLogout: () => void; token: string }> = ({ onLogo
           if (type === "message" && from !== localUserId && from !== selectedChat) {
             playNotification();
           }
+      } else if (parsed.type === "reaction" && parsed.msg_id && parsed.userId && parsed.reaction) {
+        const { msg_id, userId, reaction, from } = parsed;
+
+        setMessages((prev) => {
+          const next = { ...prev };
+          // The reaction could be in any chat history, but typically it's between the current user and 'from'
+          const chatKeys = Object.keys(next);
+          for (const key of chatKeys) {
+            next[key] = next[key].map(msg => {
+              if (msg.msg_id === msg_id) {
+                return {
+                  ...msg,
+                  reactions: {
+                    ...(msg.reactions || {}),
+                    [userId]: reaction
+                  }
+                };
+              }
+              return msg;
+            });
+          }
+          return next;
+        });
       } else if (parsed.type === "history" && Array.isArray(parsed.messages)) {
           const historyByUser: { [userId: string]: MessageObj[] } = {};
 
@@ -194,7 +219,7 @@ const ChatWrapper: React.FC<{ onLogout: () => void; token: string }> = ({ onLogo
             if (!historyByUser[otherUserId]) {
               historyByUser[otherUserId] = [];
             }
-            historyByUser[otherUserId].push({ senderId: msg.from, senderName: senderLabel, text: msg.message, timestamp: msg.timestamp || new Date().toISOString() });
+            historyByUser[otherUserId].push({ msg_id: msg.msg_id, senderId: msg.from, senderName: senderLabel, text: msg.message, timestamp: msg.timestamp || new Date().toISOString(), reactions: msg.reactions || {} });
         });
 
         setMessages((prev) => ({
@@ -320,17 +345,46 @@ const ChatWrapper: React.FC<{ onLogout: () => void; token: string }> = ({ onLogo
   const sendMessage = (message: string, recipientUserId: string) => {
     if (message.trim() !== "" && recipientUserId && localUserId) {
       const displayName = getDisplayName(localStorage.getItem("displayName"), localUserId);
+      const msg_id = crypto.randomUUID();
+      
       if (recipientUserId !== localUserId) {
         setMessages((prev) => ({
           ...prev,
           [recipientUserId]: [
             ...(prev[recipientUserId] || []),
-            { senderId: localUserId, senderName: displayName, text: message, timestamp: new Date().toISOString() },
+            { msg_id, senderId: localUserId, senderName: displayName, text: message, timestamp: new Date().toISOString(), reactions: {} },
           ],
         }));
       }
 
-      sendWsMessage(message, recipientUserId, displayName);
+      sendRawMessage({ type: "message", msg_id, to: recipientUserId, message, fromDisplayName: displayName });
+    }
+  };
+
+  const sendReaction = (msg_id: string, reaction: string, recipientUserId: string) => {
+    if (msg_id && reaction && recipientUserId && localUserId) {
+      // Optimistically update local state for self reaction
+      setMessages((prev) => {
+        const next = { ...prev };
+        if (next[recipientUserId]) {
+          next[recipientUserId] = next[recipientUserId].map(msg => {
+            if (msg.msg_id === msg_id) {
+              return {
+                ...msg,
+                reactions: {
+                  ...(msg.reactions || {}),
+                  [localUserId]: reaction
+                }
+              };
+            }
+            return msg;
+          });
+        }
+        return next;
+      });
+
+      // Send to the backend using type "reaction"
+      sendRawMessage({ type: "reaction", msg_id, to: recipientUserId, reaction });
     }
   };
 
@@ -342,6 +396,7 @@ const ChatWrapper: React.FC<{ onLogout: () => void; token: string }> = ({ onLogo
         unreadCounts={unreadCounts}
         messages={messages}
         onSendMessage={sendMessage}
+        onSendReaction={sendReaction}
         onLogout={onLogout}
         onSelectChat={handleSelectChat}
         onStartCall={webRTC.initiateCall}

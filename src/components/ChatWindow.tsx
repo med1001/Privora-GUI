@@ -24,6 +24,7 @@ interface ChatWindowProps {
   selectedChat: string;
   messages: MessageObj[];
   onSendMessage: (message: string, recipientUserId: string) => void;
+  onSendReaction?: (msg_id: string, reaction: string, recipientUserId: string) => void;
   onLogout: () => void;
   onSelectChat: (chatId: string, displayName?: string) => void;
   onStartCall: (userId: string, displayName: string) => void;
@@ -38,6 +39,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   selectedChat,
   messages,
   onSendMessage,
+  onSendReaction,
   onLogout,
   onSelectChat,
   onStartCall,
@@ -56,7 +58,23 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const [clickedMessageIdx, setClickedMessageIdx] = useState<number | null>(null);
+  const [activeReactionMsgId, setActiveReactionMsgId] = useState<string | null>(null);
+  const pressTimer = useRef<NodeJS.Timeout | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  const EMOJI_OPTIONS = ["👍", "❤️", "😂", "😮", "😢", "🔥"];
+
+  const handlePressStart = (msg_id?: string) => {
+    if (!msg_id) return;
+    pressTimer.current = setTimeout(() => {
+      setActiveReactionMsgId(msg_id);
+    }, 500);
+  };
+
+  const handlePressEnd = () => {
+    if (pressTimer.current) clearTimeout(pressTimer.current);
+  };
+
 
   const rawDisplayName = localStorage.getItem("displayName") || "User";
   const displayName = (() => {
@@ -359,23 +377,70 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                     isOwn ? "ml-auto items-end" : "mr-auto items-start"
                   }`}
               >
-                <div
-                  onClick={() => setClickedMessageIdx(clickedMessageIdx === idx ? null : idx)}
-                  className={`py-2 px-3 rounded-xl shadow-sm relative group cursor-pointer transition-all ${
-                    isOwn
-                      ? "bg-blue-600 text-white rounded-br-sm"
-                      : "bg-white border border-gray-200 text-black rounded-bl-sm"
-                  }`}
-                >
-                  <div className="text-[15px] leading-relaxed break-words">{msg.text}</div>
-                </div>
-                {clickedMessageIdx === idx && (
-                  <div className={`text-[11px] mt-1 px-1 select-none flex items-center opacity-70 animate-in fade-in slide-in-from-top-1 ${
-                    isOwn ? "text-gray-500 justify-end" : "text-gray-500 justify-start"
-                  }`}>
-                    {timeString}
+                <div className="relative">
+                  {activeReactionMsgId === msg.msg_id && (
+                    <div className={`absolute -top-10 ${isOwn ? 'right-0' : 'left-0'} bg-white border border-gray-200 shadow-lg rounded-full flex gap-1 p-1 z-10`}>
+                      {EMOJI_OPTIONS.map(emoji => (
+                        <button
+                          key={emoji}
+                          className="hover:bg-gray-100 p-1 rounded-full text-lg transition-transform hover:scale-110"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (onSendReaction && msg.msg_id) {
+                              onSendReaction(msg.msg_id, emoji, selectedChat);
+                            }
+                            setActiveReactionMsgId(null);
+                          }}
+                        >
+                          {emoji}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  <div
+                    onClick={() => {
+                        if (activeReactionMsgId === msg.msg_id) {
+                            setActiveReactionMsgId(null);
+                            return;
+                        }
+                        setClickedMessageIdx(clickedMessageIdx === idx ? null : idx);
+                    }}
+                    onMouseDown={() => handlePressStart(msg.msg_id)}
+                    onMouseUp={handlePressEnd}
+                    onMouseLeave={handlePressEnd}
+                    onTouchStart={() => handlePressStart(msg.msg_id)}
+                    onTouchEnd={handlePressEnd}
+                    className={`py-2 px-3 rounded-xl shadow-sm relative group cursor-pointer transition-all select-none ${
+                      isOwn
+                        ? "bg-blue-600 text-white rounded-br-sm"
+                        : "bg-white border border-gray-200 text-black rounded-bl-sm"
+                    }`}
+                  >
+                    <div className="text-[15px] leading-relaxed break-words">{msg.text}</div>
+                    
+                    {/* Reactions Display */}
+                    {msg.reactions && Object.keys(msg.reactions).length > 0 && (
+                      <div className={`absolute -bottom-3 ${isOwn ? 'right-1' : 'left-1'} bg-white border border-gray-200 rounded-full px-1.5 py-0.5 text-xs shadow-sm flex items-center gap-1 z-0`}>
+                         {Array.from(new Set(Object.values(msg.reactions))).map((emoji, i) => (
+                           <span key={i}>{emoji}</span>
+                         ))}
+                         {Object.keys(msg.reactions).length > 1 && <span className="text-[10px] text-gray-500 font-medium">{Object.keys(msg.reactions).length}</span>}
+                      </div>
+                    )}
                   </div>
-                )}
+                </div>
+
+                {/* Adding some margin if reactions are shown to prevent overlap */}
+                <div className={`${msg.reactions && Object.keys(msg.reactions).length > 0 ? "mt-2" : ""}`}>
+                  {clickedMessageIdx === idx && (
+                    <div className={`text-[11px] mt-1 px-1 select-none flex items-center opacity-70 animate-in fade-in slide-in-from-top-1 ${
+                      isOwn ? "text-gray-500 justify-end" : "text-gray-500 justify-start"
+                    }`}>
+                      {timeString}
+                    </div>
+                  )}
+                </div>
               </div>
             );
           })
