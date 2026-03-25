@@ -61,27 +61,29 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const [activeReactionMsgId, setActiveReactionMsgId] = useState<string | null>(null);
   const pressTimer = useRef<NodeJS.Timeout | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+    const isLongPressRef = useRef<boolean>(false);
 
-  const EMOJI_OPTIONS = ["👍", "❤️", "😂", "😮", "😢", "🔥"];
+    const EMOJI_OPTIONS = ["👍", "❤️", "😂", "😮", "😢", "🔥"];
 
-  const handlePressStart = (msg_id?: string) => {
-    if (!msg_id) return;
-    pressTimer.current = setTimeout(() => {
-      setActiveReactionMsgId(msg_id);
-    }, 500);
-  };
+    const handlePressStart = (msg_id?: string) => {
+      if (!msg_id) return;
+      isLongPressRef.current = false;
+      pressTimer.current = setTimeout(() => {
+        isLongPressRef.current = true;
+        setActiveReactionMsgId(msg_id);
+      }, 500);
+    };
 
-  const handlePressEnd = () => {
-    if (pressTimer.current) clearTimeout(pressTimer.current);
-  };
+    const handlePressEnd = () => {
+      if (pressTimer.current) clearTimeout(pressTimer.current);
+    };
 
-
-  const rawDisplayName = localStorage.getItem("displayName") || "User";
-  const displayName = (() => {
-    const trimmed = rawDisplayName.trim();
-    if (!trimmed) return "User";
-    if (trimmed.includes("@")) {
-      const localPart = trimmed.split("@")[0];
+    const rawDisplayName = localStorage.getItem("displayName") || "User";
+    const displayName = (() => {
+      const trimmed = rawDisplayName.trim();
+      if (!trimmed) return "User";
+      if (trimmed.includes("@")) {
+        const localPart = trimmed.split("@")[0];
       const base = localPart.split("+")[0];
       return base || trimmed;
     }
@@ -104,6 +106,22 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
+
+  useEffect(() => {
+    const handleGlobalClick = () => {
+      if (activeReactionMsgId) {
+        setActiveReactionMsgId(null);
+      }
+    };
+    
+    document.addEventListener("click", handleGlobalClick);
+    document.addEventListener("touchend", handleGlobalClick);
+    
+    return () => {
+      document.removeEventListener("click", handleGlobalClick);
+      document.removeEventListener("touchend", handleGlobalClick);
+    };
+  }, [activeReactionMsgId]);
 
   useEffect(() => {
     if (!search.trim()) {
@@ -201,7 +219,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   return (
     <div className="flex flex-col h-full bg-white">
       {/* Header */}
-      <div className="bg-blue-700 text-white p-3 flex items-center justify-between gap-2">
+      <div className="bg-blue-700 text-white p-3 flex items-center justify-between gap-2 relative z-0">
         <div className="flex items-center gap-2">
           {/* Mobile Menu Button */}
           <button
@@ -308,7 +326,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
       {/* Messages */}
       <div
-        className="flex-grow p-3 overflow-y-auto space-y-3 flex flex-col"
+        className="flex-grow p-3 overflow-y-auto space-y-3 flex flex-col relative z-20"
         ref={scrollRef}
       >
         {!selectedChat ? (
@@ -379,7 +397,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
               >
                 <div className="relative">
                   {activeReactionMsgId === msg.msg_id && (
-                    <div className={`absolute -top-10 ${isOwn ? 'right-0' : 'left-0'} bg-white border border-gray-200 shadow-lg rounded-full flex gap-1 p-1 z-10`}>
+                      <div className={`absolute ${idx === 0 ? '-bottom-12' : '-top-10'} ${isOwn ? 'right-0' : 'left-0'} bg-white border border-gray-200 shadow-lg rounded-full flex gap-1 p-1 z-[60]`}>
                       {EMOJI_OPTIONS.map(emoji => (
                         <button
                           key={emoji}
@@ -399,9 +417,15 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                   )}
 
                   <div
-                    onClick={() => {
+                    onClick={(e) => {
+                        if (isLongPressRef.current) {
+                            isLongPressRef.current = false;
+                            e.stopPropagation();
+                            return;
+                        }
                         if (activeReactionMsgId === msg.msg_id) {
                             setActiveReactionMsgId(null);
+                            e.stopPropagation();
                             return;
                         }
                         setClickedMessageIdx(clickedMessageIdx === idx ? null : idx);
@@ -512,6 +536,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 };
 
 export default ChatWindow;
+
 
 
 
