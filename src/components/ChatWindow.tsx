@@ -375,15 +375,82 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
               if (msg.text.startsWith("__system_audio:")) {
                 const audioBase64 = msg.text.replace("__system_audio:", "");
                 return (
-                  <div key={idx} className={`flex flex-col max-w-[75%] mb-1 ${isOwn ? "ml-auto items-end" : "mr-auto items-start"}`}>
-                    <div onClick={() => setClickedMessageIdx(clickedMessageIdx === idx ? null : idx)} className={`py-2 px-3 rounded-xl shadow-sm relative group cursor-pointer transition-all ${isOwn ? "bg-blue-600 text-white rounded-br-sm" : "bg-white border border-gray-200 text-black rounded-bl-sm"}`}>
-                      <audio controls src={audioBase64} className="h-10 w-48" />
-                    </div>
-                    {clickedMessageIdx === idx && (
-                      <div className={`text-[11px] mt-1 px-1 select-none flex items-center opacity-70 animate-in fade-in slide-in-from-top-1 ${isOwn ? "text-gray-500 justify-end" : "text-gray-500 justify-start"}`}>
-                        {timeString}
+                  <div
+                    key={idx}
+                    className={`flex flex-col max-w-[75%] mb-1 ${
+                      isOwn ? "ml-auto items-end" : "mr-auto items-start"
+                    }`}
+                  >
+                    <div className="relative">
+                      {activeReactionMsgId === msg.msg_id && (
+                          <div className={`absolute ${idx === 0 ? '-bottom-12' : '-top-10'} ${isOwn ? 'right-0' : 'left-0'} bg-white border border-gray-200 shadow-lg rounded-full flex gap-1 p-1 z-[60]`}>
+                          {EMOJI_OPTIONS.map(emoji => (
+                            <button
+                              key={emoji}
+                              className="hover:bg-gray-100 p-1 rounded-full text-lg transition-transform hover:scale-110"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (onSendReaction && msg.msg_id) {
+                                  onSendReaction(msg.msg_id, emoji, selectedChat);
+                                }
+                                setActiveReactionMsgId(null);
+                              }}
+                            >
+                              {emoji}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
+                      <div
+                        onClick={(e) => {
+                            if (isLongPressRef.current) {
+                                isLongPressRef.current = false;
+                                e.stopPropagation();
+                                return;
+                            }
+                            if (activeReactionMsgId === msg.msg_id) {
+                                setActiveReactionMsgId(null);
+                                e.stopPropagation();
+                                return;
+                            }
+                            setClickedMessageIdx(clickedMessageIdx === idx ? null : idx);
+                        }}
+                        onMouseDown={() => handlePressStart(msg.msg_id)}
+                        onMouseUp={handlePressEnd}
+                        onMouseLeave={handlePressEnd}
+                        onTouchStart={() => handlePressStart(msg.msg_id)}
+                        onTouchEnd={handlePressEnd}
+                        className={`py-2 px-3 rounded-xl shadow-sm relative group cursor-pointer transition-all select-none ${
+                          isOwn
+                            ? "bg-blue-600 text-white rounded-br-sm"
+                            : "bg-white border border-gray-200 text-black rounded-bl-sm"
+                        }`}
+                      >
+                        <audio controls src={audioBase64} className="h-10 w-48" />
+
+                        {/* Reactions Display */}
+                        {msg.reactions && Object.keys(msg.reactions).length > 0 && (
+                          <div className={`absolute -bottom-3 ${isOwn ? 'right-1' : 'left-1'} bg-white border border-gray-200 rounded-full px-1.5 py-0.5 text-xs shadow-sm flex items-center gap-1 z-0`}>
+                             {Array.from(new Set(Object.values(msg.reactions))).map((emoji, i) => (
+                               <span key={i}>{emoji}</span>
+                             ))}
+                             {Object.keys(msg.reactions).length > 1 && <span className="text-[10px] text-gray-500 font-medium">{Object.keys(msg.reactions).length}</span>}
+                          </div>
+                        )}
                       </div>
-                    )}
+                    </div>
+
+                    {/* Adding some margin if reactions are shown to prevent overlap */}
+                    <div className={`${msg.reactions && Object.keys(msg.reactions).length > 0 ? "mt-2" : ""}`}>
+                      {clickedMessageIdx === idx && (
+                        <div className={`text-[11px] mt-1 px-1 select-none flex items-center opacity-70 animate-in fade-in slide-in-from-top-1 ${
+                          isOwn ? "text-gray-500 justify-end" : "text-gray-500 justify-start"
+                        }`}>
+                          {timeString}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 );
               }
