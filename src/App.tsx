@@ -108,16 +108,19 @@ const ChatWrapper: React.FC<{ onLogout: () => void; token: string }> = ({ onLogo
         if (caller) {
           try {
             const displayName = getDisplayName(localStorage.getItem("displayName"), localUserId);
+            const msg_id = crypto.randomUUID();
             sendWsMessageRef.current(textMarker, otherUserId, displayName);
             setMessages((prev) => ({
               ...prev,
               [otherUserId]: [
                 ...(prev[otherUserId] || []),
                 {
+                  msg_id: msg_id,
                   senderId: localUserId || "system",
                   senderName: displayName,
                   text: textMarker,
                   timestamp: new Date().toISOString(),
+                  reactions: {}
                 },
               ],
             }));
@@ -186,8 +189,8 @@ const ChatWrapper: React.FC<{ onLogout: () => void; token: string }> = ({ onLogo
           if (type === "message" && from !== localUserId && from !== selectedChat) {
             playNotification();
           }
-      } else if (parsed.type === "reaction" && parsed.msg_id && parsed.userId && parsed.reaction) {
-        const { msg_id, userId, reaction, from } = parsed;
+      } else if (parsed.type === "reaction" && parsed.msg_id && parsed.from && parsed.reaction) {
+        const { msg_id, from, reaction } = parsed;
 
         setMessages((prev) => {
           const next = { ...prev };
@@ -200,7 +203,7 @@ const ChatWrapper: React.FC<{ onLogout: () => void; token: string }> = ({ onLogo
                   ...msg,
                   reactions: {
                     ...(msg.reactions || {}),
-                    [userId]: reaction
+                    [from]: reaction
                   }
                 };
               }
