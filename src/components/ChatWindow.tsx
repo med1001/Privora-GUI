@@ -381,7 +381,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
               >
                 <div className="relative">
                   {activeReactionMsgId === msg.msg_id && (
-                    <div className={`absolute -top-10 ${isOwn ? 'right-0' : 'left-0'} bg-white border border-gray-200 shadow-lg rounded-full flex gap-1 p-1 z-10`}>
+                      <div className={`absolute ${idx === 0 ? '-bottom-12' : '-top-10'} ${isOwn ? 'right-0' : 'left-0'} bg-white border border-gray-200 shadow-lg rounded-full flex gap-1 p-1 z-[60]`}>
                       {EMOJI_OPTIONS.map(emoji => (
                         <button
                           key={emoji}
@@ -516,6 +516,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 };
 
 export default ChatWindow;
+
 
 
 
