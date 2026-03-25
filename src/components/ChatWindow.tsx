@@ -115,11 +115,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     };
     
     document.addEventListener("click", handleGlobalClick);
-    document.addEventListener("touchend", handleGlobalClick);
     
     return () => {
       document.removeEventListener("click", handleGlobalClick);
-      document.removeEventListener("touchend", handleGlobalClick);
     };
   }, [activeReactionMsgId]);
 
