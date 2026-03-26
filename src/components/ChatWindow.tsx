@@ -109,7 +109,7 @@ const fallbackApiUrl = window.location.hostname === "localhost" ? "http://localh
           }
       } catch (err) {
           console.error("Error uploading file:", err);
-          alert("Failed to upload file. Please try again.");
+          alert(`Failed to upload: ${err instanceof Error ? err.message : String(err)}\nURL: ${API_URL}/api/upload`);
       } finally {
           setIsUploading(false);
           e.target.value = '';
