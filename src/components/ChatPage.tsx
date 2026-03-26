@@ -21,7 +21,7 @@ const ChatPage = ({
   const isPeerOnline = selectedChat ? !!onlineUsers?.[selectedChat] : false;
 
   return (
-    <div className="h-screen flex">
+    <div className="h-[100dvh] w-full flex overflow-hidden bg-white">
       {/* Desktop Sidebar */}
       <Sidebar
         onSelect={onSelectChat}
@@ -31,7 +31,7 @@ const ChatPage = ({
       />
 
       {/* Chat Window */}
-      <div className="flex-grow relative">
+      <div className="flex-grow relative flex min-w-0">
         <ChatWindow
           selectedChat={selectedChat}
           messages={messages[selectedChat] || []}

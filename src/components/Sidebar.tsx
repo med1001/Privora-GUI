@@ -80,7 +80,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       exit={{ x: isMobile ? "-100%" : 0 }}
       transition={{ type: "spring", stiffness: 300, damping: 30 }}
       className={`bg-blue-900 text-white ${
-        isMobile ? "fixed inset-y-0 left-0 w-64 z-40" : "w-64 hidden md:flex"
+        isMobile ? "fixed inset-y-0 left-0 w-64 z-[60] shadow-2xl" : "w-64 hidden md:flex"   
       } flex flex-col p-4`}
     >
       {isMobile && (
