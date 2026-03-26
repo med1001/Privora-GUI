@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Search, LogOut, Settings, Menu, MessageCircle, Wifi, WifiOff, Phone, Mic, Square, Send as SendIcon } from "lucide-react";
+import { Search, LogOut, Settings, Menu, MessageCircle, Wifi, WifiOff, Phone, Mic, Square, Send as SendIcon, Camera, Image as ImageIcon, Paperclip, Loader2 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -63,9 +63,61 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const scrollRef = useRef<HTMLDivElement>(null);
     const isLongPressRef = useRef<boolean>(false);
 
-    const EMOJI_OPTIONS = ["👍", "❤️", "😂", "😮", "😢", "🔥"];
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  
+  const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8000";
 
-    const handlePressStart = (msg_id?: string) => {
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'file' | 'image' | 'camera') => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      if (file.size > 10 * 1024 * 1024) {
+          alert("File too large. Maximum size is 10MB.");
+          e.target.value = '';
+          return;
+      }
+
+      setIsUploading(true);
+      const formData = new FormData();
+      formData.append("file", file);
+
+      try {
+          const token = localStorage.getItem("token");
+          const response = await fetch(`${API_URL}/api/upload`, {
+              method: "POST",
+              headers: {
+                  ...(token ? { "Authorization": `Bearer ${token}` } : {})
+              },
+              body: formData,
+          });
+
+          if (!response.ok) throw new Error("Upload failed");
+          
+          const data = await response.json();
+          if (data.url && selectedChat) {
+              let messageContent = `__system_file:${data.url}|${data.filename}`;
+              if (type === 'image' || type === 'camera' || data.type?.startsWith('image/')) {
+                  messageContent = `__system_image:${data.url}`;
+              }
+              onSendMessage(messageContent, selectedChat);
+          } else if (data.error) {
+              alert(data.error);
+          }
+      } catch (err) {
+          console.error("Error uploading file:", err);
+          alert("Failed to upload file. Please try again.");
+      } finally {
+          setIsUploading(false);
+          e.target.value = '';
+      }
+  };
+
+  const EMOJI_OPTIONS = ["👍", "❤️", "😂", "😮", "😢", "🔥"];
+
+  const handlePressStart = (msg_id?: string) => {
       if (!msg_id) return;
       isLongPressRef.current = false;
       pressTimer.current = setTimeout(() => {
@@ -217,7 +269,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   return (
     <div className="flex flex-col h-full bg-white">
       {/* Header */}
-      <div className="bg-blue-700 text-white p-3 flex items-center justify-between gap-2 relative z-0">
+      <div className="bg-blue-700 text-white p-3 flex items-center justify-between gap-2 relative z-50">
         <div className="flex items-center gap-2">
           {/* Mobile Menu Button */}
           <button
@@ -506,7 +558,18 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
                         : "bg-white border border-gray-200 text-black rounded-bl-sm"
                     }`}
                   >
-                    <div className="text-[15px] leading-relaxed break-words">{msg.text}</div>
+                    
+                    { msg.text.startsWith('__system_image:') ? (
+                        <img src={`${API_URL}${msg.text.split(':', 2)[1]}`} alt='uploaded' className='max-w-[200px] sm:max-w-xs rounded' />
+                    ) : msg.text.startsWith('__system_file:') ? (
+                        <a href={`${API_URL}${msg.text.split(':')[1].split('|')[0]}`} target='_blank' rel='noopener noreferrer' className={`flex items-center gap-2 underline break-all ${isOwn ? 'text-white hover:text-blue-200' : 'text-blue-600 hover:text-blue-800'}`}>
+                            <Paperclip size={16} className='flex-shrink-0' /> 
+                            <span className='truncate'>{msg.text.split('|')[1] || 'Attachment'}</span>
+                        </a>
+                    ) : (
+                        <div className='text-[15px] leading-relaxed break-words'>{msg.text}</div>
+                    )}
+
                     
                     {/* Reactions Display */}
                     {msg.reactions && Object.keys(msg.reactions).length > 0 && (
@@ -538,17 +601,50 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 
       {/* Input */}
       <div className="p-3 bg-white border-t flex items-center gap-2">
-        {/* Mic Button (Left side, only empty text & not recording) */}
+        
+        {/* Action Buttons (Left side, only empty text & not recording) */}
         {(!message.trim() && !isRecording) && (
-          <button
-            onClick={startRecording}
-            className="flex-shrink-0 text-gray-500 hover:text-blue-600 hover:bg-blue-50 p-2.5 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled={!selectedChat || sending}
-            title="Record Voice Message"
-          >
-            <Mic size={22} />
-          </button>
+          <div className="flex items-center">
+            <button
+              onClick={() => cameraInputRef.current?.click()}
+              className="flex-shrink-0 text-gray-500 hover:text-blue-600 hover:bg-blue-50 p-2 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={!selectedChat || sending || isUploading}
+              title="Take Photo"
+            >
+              <Camera size={20} />
+            </button>
+            <button
+              onClick={() => imageInputRef.current?.click()}
+              className="flex-shrink-0 text-gray-500 hover:text-blue-600 hover:bg-blue-50 p-2 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={!selectedChat || sending || isUploading}
+              title="Attach Image"
+            >
+              <ImageIcon size={20} />
+            </button>
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="flex-shrink-0 text-gray-500 hover:text-blue-600 hover:bg-blue-50 p-2 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={!selectedChat || sending || isUploading}
+              title="Attach Document"
+            >
+              <Paperclip size={20} />
+            </button>
+            <button
+              onClick={startRecording}
+              className="flex-shrink-0 text-gray-500 hover:text-blue-600 hover:bg-blue-50 p-2 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={!selectedChat || sending || isUploading}
+              title="Record Voice Message"
+            >
+              <Mic size={20} />
+            </button>
+          </div>
         )}
+
+        {/* Hidden File Inputs */}
+        <input type="file" ref={fileInputRef} onChange={(e) => handleUpload(e, 'file')} className="hidden" />
+        <input type="file" ref={imageInputRef} accept="image/*" onChange={(e) => handleUpload(e, 'image')} className="hidden" />
+        <input type="file" ref={cameraInputRef} accept="image/*" capture="environment" onChange={(e) => handleUpload(e, 'camera')} className="hidden" />
+
 
         {isRecording ? (
           <div className="flex-grow min-w-0 h-11 px-4 border border-red-200 rounded-full bg-red-50 flex items-center justify-between text-red-500 font-medium">
@@ -601,6 +697,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 };
 
 export default ChatWindow;
+
 
 
 
