@@ -86,7 +86,7 @@ const fallbackApiUrl = window.location.hostname === "localhost" ? "http://localh
       formData.append("file", file);
 
       try {
-          const token = localStorage.getItem("token");
+          const token = await auth.currentUser?.getIdToken();
           const response = await fetch(`${API_URL}/api/upload`, {
               method: "POST",
               headers: {
