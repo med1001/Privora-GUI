@@ -661,7 +661,14 @@ const fallbackApiUrl = window.location.hostname === "localhost" ? "http://localh
               <Square size={16} fill="currentColor" />
             </button>
           </div>
-        ) : (
+        ) : ( isUploading ? (
+            <div className="flex-grow min-w-0 h-11 px-4 border border-blue-200 rounded-full bg-blue-50 flex items-center justify-center text-blue-500 font-medium">
+              <div className="flex items-center gap-2 animate-pulse">
+                <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                <span>Uploading attachment...</span>
+              </div>
+            </div>
+          ) : (
           <input
             type="text"
             className="flex-grow min-w-0 h-11 px-4 border border-gray-300 rounded-full focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 disabled:bg-gray-100 transition-all bg-gray-50"
