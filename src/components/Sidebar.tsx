@@ -30,7 +30,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   const [loading, setLoading] = useState(false);
 
   // REST base path: env override (full URL), otherwise "/api" on same origin
-    const fallbackApiBase = window.location.hostname === "localhost" ? "http://localhost:8000" : `http://${window.location.hostname}:8000`;     
+    const fallbackApiBase = window.location.hostname === "localhost" ? "http://localhost:8000" : `${window.location.protocol}//${window.location.hostname}:8000`;     
     const API_BASE_URL = process.env.REACT_APP_API_URL || fallbackApiBase;
   useEffect(() => {
     if (!search.trim()) {
