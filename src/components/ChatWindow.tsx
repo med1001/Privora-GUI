@@ -267,7 +267,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-full bg-white">
+    <div className="flex flex-col h-full w-full bg-white flex-grow min-w-0">
       {/* Header */}
       <div className="bg-blue-700 text-white p-3 flex items-center justify-between gap-2 relative z-50">
         <div className="flex items-center gap-2">
@@ -600,14 +600,14 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       </div>
 
       {/* Input */}
-      <div className="p-3 bg-white border-t flex items-center gap-2">
+      <div className="p-2 sm:p-3 bg-white border-t flex items-center gap-1 sm:gap-2">
         
         {/* Action Buttons (Left side, only empty text & not recording) */}
         {(!message.trim() && !isRecording) && (
           <div className="flex items-center">
             <button
               onClick={() => cameraInputRef.current?.click()}
-              className="flex-shrink-0 text-gray-500 hover:text-blue-600 hover:bg-blue-50 p-2 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-shrink-0 text-gray-500 hover:text-blue-600 hover:bg-blue-50 p-1 sm:p-2 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={!selectedChat || sending || isUploading}
               title="Take Photo"
             >
@@ -615,7 +615,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
             </button>
             <button
               onClick={() => imageInputRef.current?.click()}
-              className="flex-shrink-0 text-gray-500 hover:text-blue-600 hover:bg-blue-50 p-2 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-shrink-0 text-gray-500 hover:text-blue-600 hover:bg-blue-50 p-1 sm:p-2 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={!selectedChat || sending || isUploading}
               title="Attach Image"
             >
@@ -623,7 +623,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
             </button>
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="flex-shrink-0 text-gray-500 hover:text-blue-600 hover:bg-blue-50 p-2 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-shrink-0 text-gray-500 hover:text-blue-600 hover:bg-blue-50 p-1 sm:p-2 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={!selectedChat || sending || isUploading}
               title="Attach Document"
             >
@@ -631,7 +631,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
             </button>
             <button
               onClick={startRecording}
-              className="flex-shrink-0 text-gray-500 hover:text-blue-600 hover:bg-blue-50 p-2 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-shrink-0 text-gray-500 hover:text-blue-600 hover:bg-blue-50 p-1 sm:p-2 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={!selectedChat || sending || isUploading}
               title="Record Voice Message"
             >
@@ -697,6 +697,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
 };
 
 export default ChatWindow;
+
 
 
 
