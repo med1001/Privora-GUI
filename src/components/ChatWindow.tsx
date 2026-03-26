@@ -68,7 +68,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const imageInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   
-  const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8000";
+  const fallbackApiUrl = window.location.hostname === "localhost" ? "http://localhost:8000" : `http://${window.location.hostname}:8000`;
+  const API_URL = process.env.REACT_APP_API_URL || fallbackApiUrl;
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'file' | 'image' | 'camera') => {
       const file = e.target.files?.[0];
@@ -151,8 +152,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const selectedChatDisplayName = selectedChat === userId ? `${rawSelectedName} (me)` : rawSelectedName;
 
   // Read API base URL from environment variables
-  const API_BASE_URL = process.env.REACT_APP_API_URL || "/api";
-
+    const fallbackApiBase = window.location.hostname === "localhost" ? "http://localhost:8000" : `http://${window.location.hostname}:8000`;     
+    const API_BASE_URL = process.env.REACT_APP_API_URL || fallbackApiBase;
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
