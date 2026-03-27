@@ -75,6 +75,10 @@ const useWebSocket = (
             onAuthErrorRef.current();
           }
           messageBufferRef.current = []; // Clear buffer on auth rejection
+          return; // Do not reconnect if the token is permanently rejected      
+        }
+
+        // Auto-reconnect with exponential backoff for normal network drops     
         const timeout = Math.min(1000 * Math.pow(2, attemptRef.current), 30000); // Max 30s
         console.log(`[WebSocket] Reconnecting in ${timeout / 1000} seconds...`);
         reconnectTimeoutRef.current = setTimeout(() => {
