@@ -184,9 +184,7 @@ const fallbackApiUrl = window.location.hostname === "localhost" ? "http://localh
 
     const fetchUsers = async () => {
       const currentUser = auth.currentUser;
-            const token = await currentUser?.getIdToken();
-            if (!token) { console.error('No token available from Firebase Auth'); alert('Authentication missing. Please try reloading the page.'); setIsUploading(false); return; }
-      if (!token) return;
+        const token = await currentUser?.getIdToken();
 
       setLoading(true);
       try {
