@@ -229,15 +229,25 @@ export const useWebRTC = (
       setCallState(s => (s.status === 'calling' ? { ...s, status: 'calling_offline' } : s));
     }
     else if (type === 'call_answer') {
+      console.log("[WebRTC] Received call_answer from peer:", parsed);
       if (pcRef.current) {
-        await pcRef.current.setRemoteDescription(new RTCSessionDescription(parsed.answer));
-        setCallState(s => ({ ...s, status: "connected" }));
-        callStartTimeRef.current = Date.now();
-        
-        iceCandidateQueueRef.current.forEach(candidate => {
-            pcRef.current?.addIceCandidate(new RTCIceCandidate(candidate)).catch(e => console.log('ICE err', e));
-        });
-        iceCandidateQueueRef.current = [];
+        try {
+          // Some mobile WebRTC libraries format the answer payload differently
+          const answerPayload = parsed.answer?.sdp ? parsed.answer : (parsed.sdp ? parsed : parsed.answer);
+          
+          await pcRef.current.setRemoteDescription(new RTCSessionDescription(answerPayload));
+          setCallState(s => ({ ...s, status: "connected" }));
+          callStartTimeRef.current = Date.now();
+
+          iceCandidateQueueRef.current.forEach(candidate => {
+              pcRef.current?.addIceCandidate(new RTCIceCandidate(candidate)).catch(e => console.log('ICE err', e));
+          });
+          iceCandidateQueueRef.current = [];
+        } catch (error) {
+          console.error("[WebRTC] Failed to set remote description from answer:", error, "Payload:", parsed);
+        }
+      } else {
+        console.warn("[WebRTC] Received call_answer but pcRef is null. Was the call prematurely closed?");
       }
     }
     else if (type === 'ice_candidate') {
