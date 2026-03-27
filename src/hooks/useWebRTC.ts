@@ -22,7 +22,8 @@ export const useWebRTC = (
 ) => {
   const [callState, setCallState] = useState<CallState>({ status: "idle", peerId: null, peerName: null, isIncoming: false });
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
-  
+  const [isMuted, setIsMuted] = useState(false);
+
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
   const callStartTimeRef = useRef<number | null>(null);
@@ -39,6 +40,7 @@ export const useWebRTC = (
         pcRef.current = null;
       }
       setRemoteStream(null);
+      setIsMuted(false);
       iceCandidateQueueRef.current = [];
 
       const endTime = Date.now();
@@ -250,13 +252,26 @@ export const useWebRTC = (
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [callState.status, callState.peerId, sendRawMessage]);
 
+  const toggleMute = useCallback(() => {
+    if (localStreamRef.current) {
+      const audioTracks = localStreamRef.current.getAudioTracks();
+      if (audioTracks.length > 0) {
+        const track = audioTracks[0];
+        track.enabled = !track.enabled;
+        setIsMuted(!track.enabled);
+      }
+    }
+  }, []);
+
   return {
     callState,
     remoteStream,
+    isMuted,
     initiateCall,
     acceptCall,
     rejectCall,
     endCall,
+    toggleMute,
     handleWebRTCSignal
   };
 };
