@@ -413,9 +413,7 @@ const ChatWrapper: React.FC<{ onLogout: () => void; token: string }> = ({ onLogo
         onToggleMute={webRTC.toggleMute}
         onAccept={webRTC.acceptCall}
         onReject={() => webRTC.rejectCall()}
-        onHangup={() => webRTC.rejectCall()}
-        isMuted={webRTC.isMuted}
-        onToggleMute={webRTC.toggleMute}
+        onHangup={() => webRTC.endCall()}
       />
     </>
   );

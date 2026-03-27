@@ -271,17 +271,6 @@ export const useWebRTC = (
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [callState.status, callState.peerId, sendRawMessage]);
 
-  const toggleMute = useCallback(() => {
-    if (localStreamRef.current) {
-      const audioTracks = localStreamRef.current.getAudioTracks();
-      if (audioTracks.length > 0) {
-        const track = audioTracks[0];
-        track.enabled = !track.enabled;
-        setIsMuted(!track.enabled);
-      }
-    }
-  }, []);
-
   return {
     callState,
     remoteStream,
