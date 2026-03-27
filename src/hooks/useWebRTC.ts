@@ -38,6 +38,9 @@ export const useWebRTC = (
       }
     }
   }, []);
+
+  const cleanupCall = useCallback((recordEnd: boolean = true) => {
+      if (localStreamRef.current) {
         localStreamRef.current.getTracks().forEach(t => t.stop());
         localStreamRef.current = null;
       }
