@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Phone, PhoneOff, User } from 'lucide-react';
+import { Phone, PhoneOff, User, Mic, MicOff, Volume2 } from 'lucide-react';
 import { CallState } from '../hooks/useWebRTC';
 
 interface CallOverlayProps {
@@ -8,9 +8,11 @@ interface CallOverlayProps {
   onAccept: () => void;
   onReject: () => void;
   onHangup: () => void;
+  isMuted: boolean;
+  onToggleMute: () => void;
 }
 
-const CallOverlay: React.FC<CallOverlayProps> = ({ callState, remoteStream, onAccept, onReject, onHangup }) => {
+const CallOverlay: React.FC<CallOverlayProps> = ({ callState, remoteStream, onAccept, onReject, onHangup, isMuted, onToggleMute }) => {
   const audioRef = useRef<HTMLAudioElement>(null);
   const ringtoneRef = useRef<HTMLAudioElement>(null);
   const [duration, setDuration] = useState(0);
@@ -95,21 +97,45 @@ const CallOverlay: React.FC<CallOverlayProps> = ({ callState, remoteStream, onAc
         </p>
         
         <div className="flex items-center gap-6">
-          {(callState.status === 'ringing') && (
-            <button 
-              onClick={onAccept}
-              className="bg-green-500 hover:bg-green-600 text-white rounded-full p-4 shadow-lg transform hover:scale-105 transition"
-            >
-              <Phone size={28} />
-            </button>
+          {(callState.status === 'ringing') ? (
+            <>
+              <button
+                onClick={onAccept}
+                className="bg-green-500 hover:bg-green-600 text-white rounded-full p-4 shadow-lg transform hover:scale-105 transition"
+              >
+                <Phone size={28} />
+              </button>
+              <button
+                onClick={onReject}
+                className="bg-red-500 hover:bg-red-600 text-white rounded-full p-4 shadow-lg transform hover:scale-105 transition"
+              >
+                <PhoneOff size={28} />
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={onToggleMute}
+                className={`${isMuted ? 'bg-gray-100 text-gray-500' : 'bg-gray-800 text-white'} rounded-full p-4 shadow-lg transform hover:scale-105 transition`}
+              >
+                {isMuted ? <MicOff size={28} /> : <Mic size={28} />}
+              </button>
+              
+              <button
+                onClick={onHangup}
+                className="bg-red-500 hover:bg-red-600 text-white rounded-full p-6 shadow-lg transform hover:scale-105 transition"
+              >
+                <PhoneOff size={32} />
+              </button>
+
+              <button
+                onClick={() => alert("Using phone earpiece is only possible on native app.")}
+                className="bg-blue-100 text-blue-600 rounded-full p-4 shadow-lg transform hover:scale-105 transition shadow-inner"
+              >
+                <Volume2 size={28} />
+              </button>
+            </>
           )}
-          
-          <button 
-            onClick={callState.status === 'ringing' ? onReject : onHangup}
-            className="bg-red-500 hover:bg-red-600 text-white rounded-full p-4 shadow-lg transform hover:scale-105 transition"
-          >
-            <PhoneOff size={28} />
-          </button>
         </div>
       </div>
     </div>

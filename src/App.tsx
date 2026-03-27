@@ -406,12 +406,14 @@ const ChatWrapper: React.FC<{ onLogout: () => void; token: string }> = ({ onLogo
         socketStatus={socketStatus}
         onlineUsers={onlineUsers}
       />
-      <CallOverlay 
+      <CallOverlay
         callState={webRTC.callState}
         remoteStream={webRTC.remoteStream}
         onAccept={webRTC.acceptCall}
         onReject={() => webRTC.rejectCall()}
         onHangup={() => webRTC.rejectCall()}
+        isMuted={webRTC.isMuted}
+        onToggleMute={webRTC.toggleMute}
       />
     </>
   );
