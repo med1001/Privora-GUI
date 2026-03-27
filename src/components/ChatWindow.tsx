@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Search, LogOut, Settings, Menu, MessageCircle, Wifi, WifiOff, Phone, Mic, Square, Send as SendIcon, Camera, Image as ImageIcon, Paperclip, Loader2 } from "lucide-react";
+import { Search, LogOut, Settings, Menu, MessageCircle, Wifi, WifiOff, Phone, Mic, Square, Send as SendIcon, Camera, Image as ImageIcon, Paperclip, Loader2, X, Download } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -58,6 +58,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const [clickedMessageIdx, setClickedMessageIdx] = useState<number | null>(null);
+  const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
   const [activeReactionMsgId, setActiveReactionMsgId] = useState<string | null>(null);
   const pressTimer = useRef<NodeJS.Timeout | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -564,7 +565,7 @@ const fallbackApiUrl = window.location.hostname === "localhost" ? "http://localh
                   >
                     
                     { msg.text.startsWith('__system_image:') ? (
-                        <img src={`${API_URL}${msg.text.split(':', 2)[1]}`} alt='uploaded' className='max-w-[200px] sm:max-w-xs rounded' />
+                        <img onClick={() => setFullscreenImage(`${API_URL}${msg.text.split(':', 2)[1]}`)} src={`${API_URL}${msg.text.split(':', 2)[1]}`} alt='uploaded' className='max-w-[200px] sm:max-w-xs rounded cursor-pointer hover:opacity-90 transition-opacity' />
                     ) : msg.text.startsWith('__system_file:') ? (
                         <a href={`${API_URL}${msg.text.split(':')[1].split('|')[0]}`} target='_blank' rel='noopener noreferrer' className={`flex items-center gap-2 underline break-all ${isOwn ? 'text-white hover:text-blue-200' : 'text-blue-600 hover:text-blue-800'}`}>
                             <Paperclip size={16} className='flex-shrink-0' /> 
@@ -703,6 +704,20 @@ const fallbackApiUrl = window.location.hostname === "localhost" ? "http://localh
           </button>
         )}
       </div>
+
+      {fullscreenImage && (
+        <div className="fixed inset-0 z-[100] bg-black/90 flex flex-col items-center justify-center p-4">
+          <div className="absolute top-4 right-4 flex gap-4">
+            <a href={fullscreenImage} download="image.jpg" className="text-white hover:text-gray-300 p-2 bg-black/50 rounded-full transition" target="_blank" rel="noopener noreferrer">
+              <Download size={24} />
+            </a>
+            <button onClick={() => setFullscreenImage(null)} className="text-white hover:text-gray-300 p-2 bg-black/50 rounded-full transition">
+              <X size={24} />
+            </button>
+          </div>
+          <img src={fullscreenImage} alt="Fullscreen" className="max-w-full max-h-full object-contain" />
+        </div>
+      )}
     </div>
   );
 };
