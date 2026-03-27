@@ -11,6 +11,7 @@ const useWebSocket = (
   const onAuthErrorRef = useRef(onAuthError);
   const attemptRef = useRef(0);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const messageBufferRef = useRef<any[]>([]);
 
   useEffect(() => {
     onMessageReceivedRef.current = onMessageReceived;
@@ -41,6 +42,15 @@ const useWebSocket = (
 
         const loginMessage = { type: "login", token };
         socketConnection?.send(JSON.stringify(loginMessage));
+
+        // Flush message buffer
+        if (messageBufferRef.current.length > 0) {
+          console.log(`[WebSocket] Flushing ${messageBufferRef.current.length} buffered messages`);
+          messageBufferRef.current.forEach((msg) => {
+            socketConnection?.send(JSON.stringify(msg));
+          });
+          messageBufferRef.current = [];
+        }
       };
 
       socketConnection.onmessage = (event) => {
@@ -64,10 +74,7 @@ const useWebSocket = (
           if (onAuthErrorRef.current) {
             onAuthErrorRef.current();
           }
-          return; // Do not reconnect if the token is permanently rejected
-        }
-
-        // Auto-reconnect with exponential backoff for normal network drops
+          messageBufferRef.current = []; // Clear buffer on auth rejection
         const timeout = Math.min(1000 * Math.pow(2, attemptRef.current), 30000); // Max 30s
         console.log(`[WebSocket] Reconnecting in ${timeout / 1000} seconds...`);
         reconnectTimeoutRef.current = setTimeout(() => {
@@ -100,15 +107,21 @@ const useWebSocket = (
   }, [token]);
 
   const sendMessage = (message: string, recipientEmail: string, fromDisplayName: string) => {
+    const payload = { type: "message", to: recipientEmail, message, fromDisplayName };
     if (socket && socket.readyState === WebSocket.OPEN) {
-      const payload = { type: "message", to: recipientEmail, message, fromDisplayName };
       socket.send(JSON.stringify(payload));
+    } else {
+      console.log("[WebSocket] Socket not ready, buffering message payload");
+      messageBufferRef.current.push(payload);
     }
   };
 
   const sendRawMessage = (payload: any) => {
     if (socket && socket.readyState === WebSocket.OPEN) {
       socket.send(JSON.stringify(payload));
+    } else {
+      console.log("[WebSocket] Socket not ready, buffering raw payload:", payload.type);
+      messageBufferRef.current.push(payload);
     }
   };
 
