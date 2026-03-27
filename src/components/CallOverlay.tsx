@@ -122,17 +122,17 @@ const CallOverlay: React.FC<CallOverlayProps> = ({ callState, remoteStream, onAc
               </button>
               
               <button
+                onClick={() => alert("Browser calls default to speakerphone. Switching to the built-in receiver requires a native app.")}
+                className="bg-blue-100 text-blue-600 rounded-full p-4 shadow-lg transform hover:scale-105 transition shadow-inner"
+              >
+                <Volume2 size={28} />
+              </button>
+
+              <button
                 onClick={onHangup}
                 className="bg-red-500 hover:bg-red-600 text-white rounded-full p-6 shadow-lg transform hover:scale-105 transition"
               >
                 <PhoneOff size={32} />
-              </button>
-
-              <button
-                onClick={() => alert("Using phone earpiece is only possible on native app.")}
-                className="bg-blue-100 text-blue-600 rounded-full p-4 shadow-lg transform hover:scale-105 transition shadow-inner"
-              >
-                <Volume2 size={28} />
               </button>
             </>
           )}
