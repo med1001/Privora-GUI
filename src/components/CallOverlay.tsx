@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Phone, PhoneOff, User, Mic, MicOff, Volume2 } from 'lucide-react';
+import { Phone, PhoneOff, User, Mic, MicOff, Volume2, Smartphone } from 'lucide-react';
 import { CallState } from '../hooks/useWebRTC';
 
 interface CallOverlayProps {
@@ -96,6 +96,27 @@ const CallOverlay: React.FC<CallOverlayProps> = ({ callState, remoteStream, onAc
           {callState.status === 'connected' && formatDuration(duration)}
         </p>
         
+        {callState.status === 'connected' && (
+          <div className="flex items-center gap-6 mb-6">
+            <button
+              onClick={onToggleMute}
+              className={`rounded-full p-4 shadow-lg transform hover:scale-105 transition ${
+                isMuted ? 'bg-gray-300 text-gray-800' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+              title={isMuted ? "Unmute" : "Mute"}
+            >
+              {isMuted ? <MicOff size={24} /> : <Mic size={24} />}
+            </button>
+            <button
+              onClick={() => alert("Not possible on the web version, only works on the native application")}
+              className="bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-full p-4 shadow-lg transform hover:scale-105 transition"
+              title="Switch to Phone Speaker"
+            >
+              <Volume2 size={24} />
+            </button>
+          </div>
+        )}
+
         <div className="flex items-center gap-6">
           {(callState.status === 'ringing') ? (
             <>
