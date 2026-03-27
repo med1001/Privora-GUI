@@ -185,6 +185,7 @@ const fallbackApiUrl = window.location.hostname === "localhost" ? "http://localh
     const fetchUsers = async () => {
       const currentUser = auth.currentUser;
         const token = await currentUser?.getIdToken();
+        if (!token) return;
 
       setLoading(true);
       try {
@@ -663,7 +664,7 @@ const fallbackApiUrl = window.location.hostname === "localhost" ? "http://localh
               <Square size={16} fill="currentColor" />
             </button>
           </div>
-        ) : ( isUploading ? (
+        ) : isUploading ? (
             <div className="flex-grow min-w-0 h-11 px-4 border border-blue-200 rounded-full bg-blue-50 flex items-center justify-center text-blue-500 font-medium">
               <div className="flex items-center gap-2 animate-pulse">
                 <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
