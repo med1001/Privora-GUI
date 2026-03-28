@@ -11,6 +11,7 @@ const useWebSocket = (
   const onAuthErrorRef = useRef(onAuthError);
   const attemptRef = useRef(0);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const pingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const messageBufferRef = useRef<any[]>([]);
 
   useEffect(() => {
@@ -51,12 +52,28 @@ const useWebSocket = (
           });
           messageBufferRef.current = [];
         }
+
+        // Setup ping interval to keep connection alive
+        if (pingIntervalRef.current) clearInterval(pingIntervalRef.current);
+        pingIntervalRef.current = setInterval(() => {
+          if (socketConnection && socketConnection.readyState === WebSocket.OPEN) {
+            console.log("[WebSocket] Sending ping to keep connection alive...");
+            socketConnection.send(JSON.stringify({ type: "ping" }));
+          }
+        }, 30000); // 30 seconds
       };
 
       socketConnection.onmessage = (event) => {
         if (!isMounted) return;
         try {
           const data = JSON.parse(event.data);
+          
+          // Intercept pong message so it doesn't get processed by the rest of the application
+          if (data.type === "pong") {
+            console.log("[WebSocket] Received pong from server");
+            return;
+          }
+
           onMessageReceivedRef.current(data);
         } catch (err) {
           console.error("[WebSocket] Failed to parse incoming message:", event.data, err);
@@ -65,6 +82,12 @@ const useWebSocket = (
 
       socketConnection.onclose = (event) => {
         if (!isMounted) return;
+        
+        if (pingIntervalRef.current) {
+          clearInterval(pingIntervalRef.current);
+          pingIntervalRef.current = null;
+        }
+
         console.log("[WebSocket] Disconnected with code:", event.code, "reason:", event.reason);
         setSocketStatus("disconnected");
 
@@ -102,6 +125,9 @@ const useWebSocket = (
       isMounted = false;
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
+      }
+      if (pingIntervalRef.current) {
+        clearInterval(pingIntervalRef.current);
       }
       if (socketConnection) {
         console.log("[WebSocket] Closing connection via cleanup...");

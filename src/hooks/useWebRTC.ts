@@ -147,11 +147,12 @@ export const useWebRTC = (
 
       const selfDisplayNameStr = localStorage.getItem("displayName") || "User";
 
-      if (callingTimeoutRef.current) clearTimeout(callingTimeoutRef.current);
+if (callingTimeoutRef.current) clearTimeout(callingTimeoutRef.current);
       callingTimeoutRef.current = setTimeout(() => {
-        if (callState.status === "calling" || callState.status === "calling_offline") {
-          cleanupCall(false);
-        }
+        // We use peerId from the function arguments so it's always correct
+        console.log("[WebRTC] Outgoing call timeout. Cancelling call to:", peerId);
+        sendRawMessage({ type: 'call_end', to: peerId });
+        cleanupCall(false);
       }, 45000);
 
       sendRawMessage({
@@ -170,8 +171,11 @@ export const useWebRTC = (
   const acceptCall = useCallback(async () => {
     if (callState.status !== 'ringing' || !callState.peerId) return;
     const peerId = callState.peerId;
-
-    setCallState(s => ({ ...s, status: "connected" }));
+      if (ringingTimeoutRef.current) {
+        clearTimeout(ringingTimeoutRef.current);
+        ringingTimeoutRef.current = null;
+      }
+          setCallState(s => ({ ...s, status: "connected" }));
     callStartTimeRef.current = Date.now();
 
     try {
@@ -217,13 +221,11 @@ export const useWebRTC = (
            return prev;
         }
         if (ringingTimeoutRef.current) clearTimeout(ringingTimeoutRef.current);
-          ringingTimeoutRef.current = setTimeout(() => {
-            cleanupCall(false);
-          }, 45000);
-          if (ringingTimeoutRef.current) clearTimeout(ringingTimeoutRef.current);
-          ringingTimeoutRef.current = setTimeout(() => {
-            cleanupCall(false);
-          }, 45000);
+        ringingTimeoutRef.current = setTimeout(() => {
+          console.log("[WebRTC] Incoming call timeout. Automatically rejecting from:", from);
+          sendRawMessage({ type: 'call_reject', to: from, reason: 'timeout' });
+          cleanupCall(false);
+        }, 45000);
           return {
             status: "ringing",
             peerId: from,
@@ -256,6 +258,10 @@ export const useWebRTC = (
     }
     else if (type === 'call_answer') {
       console.log("[WebRTC] Received call_answer from peer:", parsed);
+        if (callingTimeoutRef.current) {
+          clearTimeout(callingTimeoutRef.current);
+          callingTimeoutRef.current = null;
+        }
       if (pcRef.current) {
         try {
           // Some mobile WebRTC libraries format the answer payload differently
