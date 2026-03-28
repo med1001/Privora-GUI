@@ -74,16 +74,20 @@ const CallOverlay: React.FC<CallOverlayProps> = ({ callState, remoteStream, onAc
     return () => clearTimeout(abortTimeout);
   }, [callState.status, callState.isIncoming, onHangup, onReject]);
 
-  // Attach remote stream when connected
+    // Attach remote stream when connected
   useEffect(() => {
-    if (callState.status === 'connected' && remoteStream && audioRef.current) {
+    if (callState.status === 'connected' && remoteStream && audioRef.current) { 
       audioRef.current.srcObject = remoteStream;
-        const playPromise = audioRef.current.play();
-        if (playPromise !== undefined) {
-           playPromise.catch(e => {
-             if (e.name !== 'AbortError') console.log('Remote audio error:', e);
-           });
-        }
+      const playPromise = audioRef.current.play();
+      if (playPromise !== undefined) {
+         playPromise.catch(e => {
+           if (e.name !== 'AbortError') console.log('Remote audio error:', e);
+         });
+      }
+    }
+  }, [callState.status, remoteStream]);
+
+  if (callState.status === 'idle') return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
