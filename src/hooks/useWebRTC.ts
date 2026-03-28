@@ -28,6 +28,8 @@ export const useWebRTC = (
   const localStreamRef = useRef<MediaStream | null>(null);
   const callStartTimeRef = useRef<number | null>(null);
   const iceCandidateQueueRef = useRef<any[]>([]);
+  const ringingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const callingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const toggleMute = useCallback(() => {
     if (localStreamRef.current) {
@@ -40,6 +42,15 @@ export const useWebRTC = (
   }, []);
 
   const cleanupCall = useCallback((recordEnd: boolean = true) => {
+      
+        if (ringingTimeoutRef.current) {
+          clearTimeout(ringingTimeoutRef.current);
+          ringingTimeoutRef.current = null;
+        }
+        if (callingTimeoutRef.current) {
+          clearTimeout(callingTimeoutRef.current);
+          callingTimeoutRef.current = null;
+        }
       if (localStreamRef.current) {
         localStreamRef.current.getTracks().forEach(t => t.stop());
         localStreamRef.current = null;
@@ -136,6 +147,13 @@ export const useWebRTC = (
 
       const selfDisplayNameStr = localStorage.getItem("displayName") || "User";
 
+      if (callingTimeoutRef.current) clearTimeout(callingTimeoutRef.current);
+      callingTimeoutRef.current = setTimeout(() => {
+        if (callState.status === "calling" || callState.status === "calling_offline") {
+          cleanupCall(false);
+        }
+      }, 45000);
+
       sendRawMessage({
         type: 'call_offer',
         to: peerId,
@@ -198,12 +216,20 @@ export const useWebRTC = (
            sendRawMessage({ type: 'call_reject', to: from, reason: 'busy' });
            return prev;
         }
-        return {
-          status: "ringing",
-          peerId: from,
-          peerName: parsed.fromDisplayName || from,
-          isIncoming: true
-        };
+        if (ringingTimeoutRef.current) clearTimeout(ringingTimeoutRef.current);
+          ringingTimeoutRef.current = setTimeout(() => {
+            cleanupCall(false);
+          }, 45000);
+          if (ringingTimeoutRef.current) clearTimeout(ringingTimeoutRef.current);
+          ringingTimeoutRef.current = setTimeout(() => {
+            cleanupCall(false);
+          }, 45000);
+          return {
+            status: "ringing",
+            peerId: from,
+            peerName: parsed.fromDisplayName || from,
+            isIncoming: true
+          };
       });
       setTimeout(async () => {
           if (pcRef.current) {
