@@ -46,7 +46,13 @@ const CallOverlay: React.FC<CallOverlayProps> = ({ callState, remoteStream, onAc
             audio.src = callState.status === 'calling' ? '/assets/calling.mp3' : '/assets/ringing.mp3';
           }
           audio.loop = true;
-          audio.play().catch(e => console.log('Audio error:', e));
+          // Catch and ignore abort errors to prevent unnecessary console spam
+          const playPromise = audio.play();
+          if (playPromise !== undefined) {
+             playPromise.catch(e => {
+               if (e.name !== 'AbortError') console.log('Audio error:', e);
+             });
+          }
         }
 
         // Auto abort after 45 seconds of ringing
@@ -72,11 +78,12 @@ const CallOverlay: React.FC<CallOverlayProps> = ({ callState, remoteStream, onAc
   useEffect(() => {
     if (callState.status === 'connected' && remoteStream && audioRef.current) {
       audioRef.current.srcObject = remoteStream;
-      audioRef.current.play().catch(e => console.log('Remote audio error:', e));
-    }
-  }, [callState.status, remoteStream]);
-
-  if (callState.status === 'idle') return null;
+        const playPromise = audioRef.current.play();
+        if (playPromise !== undefined) {
+           playPromise.catch(e => {
+             if (e.name !== 'AbortError') console.log('Remote audio error:', e);
+           });
+        }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
