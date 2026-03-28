@@ -96,6 +96,7 @@ const ChatWrapper: React.FC<{ onLogout: () => void; token: string }> = ({ onLogo
 
   const webRTC = useWebRTC(
     localUserId || "",
+    token,
     (payload) => sendRawMessageRef.current(payload),
           (otherUserId: string, durationStr: string, missed: boolean, caller: boolean) => {
         let textMarker = "";

@@ -1,5 +1,10 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 
+interface RTCConfigPayload {
+  iceServers?: RTCIceServer[];
+  iceTransportPolicy?: RTCIceTransportPolicy;
+}
+
 export interface CallState {
   status: "idle" | "calling" | "calling_offline" | "ringing" | "connecting" | "connected" | "reconnecting";
   peerId: string | null;
@@ -16,8 +21,13 @@ const AUDIO_CONSTRAINTS = {
   }
 };
 
+const DEFAULT_ICE_SERVERS: RTCIceServer[] = [
+  { urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }
+];
+
 export const useWebRTC = (
   localUserId: string,
+  authToken: string | null,
   sendRawMessage: (data: any) => void,
   onCallEnded: (peerId: string, durationStr: string, missed: boolean, caller: boolean) => void
 ) => {
@@ -30,10 +40,60 @@ export const useWebRTC = (
   const callStartTimeRef = useRef<number | null>(null);
   const currentCallIdRef = useRef<string | null>(null);
   const callStateRef = useRef<CallState>({ status: "idle", peerId: null, peerName: null, isIncoming: false, callId: null });
+  const rtcConfigRef = useRef<RTCConfigPayload>({ iceServers: DEFAULT_ICE_SERVERS, iceTransportPolicy: 'all' });
   const iceCandidateQueueRef = useRef<Array<{ callId: string; candidate: RTCIceCandidateInit }>>([]);
   const ringingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const callingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const connectionLossTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadRTCConfig = async () => {
+      if (!authToken) {
+        rtcConfigRef.current = { iceServers: DEFAULT_ICE_SERVERS, iceTransportPolicy: 'all' };
+        return;
+      }
+
+      const fallbackApiBase = window.location.hostname === 'localhost'
+        ? 'http://localhost:8000'
+        : `${window.location.protocol}//${window.location.host}`;
+      const apiBaseUrl = process.env.REACT_APP_API_URL || fallbackApiBase;
+
+      try {
+        const response = await fetch(`${apiBaseUrl}/api/rtc-config`, {
+          headers: {
+            Authorization: `Bearer ${authToken}`,
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(`RTC config request failed with ${response.status}`);
+        }
+
+        const data: RTCConfigPayload = await response.json();
+        if (!isMounted) {
+          return;
+        }
+
+        rtcConfigRef.current = {
+          iceServers: data.iceServers && data.iceServers.length > 0 ? data.iceServers : DEFAULT_ICE_SERVERS,
+          iceTransportPolicy: data.iceTransportPolicy || 'all',
+        };
+      } catch (error) {
+        console.error('[WebRTC] Failed to load RTC config, falling back to default STUN only.', error);
+        if (isMounted) {
+          rtcConfigRef.current = { iceServers: DEFAULT_ICE_SERVERS, iceTransportPolicy: 'all' };
+        }
+      }
+    };
+
+    loadRTCConfig();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [authToken]);
 
   useEffect(() => {
     callStateRef.current = callState;
@@ -131,25 +191,8 @@ export const useWebRTC = (
 
   const createPeerConnection = useCallback((peerId: string, callId: string) => {
     const pc = new RTCPeerConnection({
-      iceServers: [
-        { urls: 'stun:stun.l.google.com:19302' },
-        { urls: 'stun:stun1.l.google.com:19302' },
-        {
-          urls: 'turn:openrelay.metered.ca:80',
-          username: 'openrelayproject',
-          credential: 'openrelayproject'
-        },
-        {
-          urls: 'turn:openrelay.metered.ca:443',
-          username: 'openrelayproject',
-          credential: 'openrelayproject'
-        },
-        {
-          urls: 'turn:openrelay.metered.ca:443?transport=tcp',
-          username: 'openrelayproject',
-          credential: 'openrelayproject'
-        }
-      ]
+      iceServers: rtcConfigRef.current.iceServers || DEFAULT_ICE_SERVERS,
+      iceTransportPolicy: rtcConfigRef.current.iceTransportPolicy || 'all'
     });
 
     pc.onicecandidate = (event) => {
