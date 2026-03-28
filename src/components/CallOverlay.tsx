@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Phone, PhoneOff, User, Mic, MicOff, Volume2, Smartphone } from 'lucide-react';
+import { Phone, PhoneOff, User, Mic, MicOff, Volume2 } from 'lucide-react';
 import { CallState } from '../hooks/useWebRTC';
 
 interface CallOverlayProps {
@@ -33,50 +33,42 @@ const CallOverlay: React.FC<CallOverlayProps> = ({ callState, remoteStream, onAc
     return `${m}:${s}`;
   };
 
-  // Play ringtone if calling or ringing and handle abort timeout
+  // Play ringtone while the call is still waiting for pickup.
   useEffect(() => {
-    let abortTimeout: NodeJS.Timeout;
-    
     if (callState.status === 'calling' || callState.status === 'calling_offline' || callState.status === 'ringing') {
-        const audio = ringtoneRef.current;
-        if (audio) {
-          if (callState.status === 'calling_offline') {
-            audio.src = '/assets/offline_calling.wav';
-          } else {
-            audio.src = callState.status === 'calling' ? '/assets/calling.mp3' : '/assets/ringing.mp3';
-          }
-          audio.loop = true;
-          // Catch and ignore abort errors to prevent unnecessary console spam
-          const playPromise = audio.play();
-          if (playPromise !== undefined) {
-             playPromise.catch(e => {
-               if (e.name !== 'AbortError') console.log('Audio error:', e);
-             });
-          }
+      const audio = ringtoneRef.current;
+      if (audio) {
+        if (callState.status === 'calling_offline') {
+          audio.src = '/assets/offline_calling.wav';
+        } else {
+          audio.src = callState.status === 'calling' ? '/assets/calling.mp3' : '/assets/ringing.mp3';
         }
-
-        // Auto abort after 45 seconds of ringing
-        abortTimeout = setTimeout(() => {
-          console.log("[CallOverlay] Auto-aborting call due to timeout (no response)");
-          if (callState.isIncoming) {
-            onReject();
-          } else {
-            onHangup();
-          }
-        }, 45000);
+        audio.loop = true;
+        const playPromise = audio.play();
+        if (playPromise !== undefined) {
+          playPromise.catch(e => {
+            if (e.name !== 'AbortError') console.log('Audio error:', e);
+          });
+        }
+      }
     } else {
-        if (ringtoneRef.current) {
-            ringtoneRef.current.pause();
-            ringtoneRef.current.currentTime = 0;
-        }
+      if (ringtoneRef.current) {
+        ringtoneRef.current.pause();
+        ringtoneRef.current.currentTime = 0;
+      }
     }
-    
-    return () => clearTimeout(abortTimeout);
-  }, [callState.status, callState.isIncoming, onHangup, onReject]);
 
-    // Attach remote stream when connected
+    return () => {
+      if (ringtoneRef.current) {
+        ringtoneRef.current.pause();
+        ringtoneRef.current.currentTime = 0;
+      }
+    };
+  }, [callState.status]);
+
+  // Attach remote stream when media is available.
   useEffect(() => {
-    if (callState.status === 'connected' && remoteStream && audioRef.current) { 
+    if (remoteStream && audioRef.current) {
       audioRef.current.srcObject = remoteStream;
       const playPromise = audioRef.current.play();
       if (playPromise !== undefined) {
@@ -85,7 +77,26 @@ const CallOverlay: React.FC<CallOverlayProps> = ({ callState, remoteStream, onAc
          });
       }
     }
-  }, [callState.status, remoteStream]);
+  }, [remoteStream]);
+
+  const getStatusLabel = () => {
+    switch (callState.status) {
+      case 'calling':
+        return 'Calling...';
+      case 'calling_offline':
+        return 'User is offline. Waiting for them to reconnect...';
+      case 'ringing':
+        return 'Incoming Call...';
+      case 'connecting':
+        return 'Connecting audio...';
+      case 'reconnecting':
+        return 'Reconnecting...';
+      case 'connected':
+        return formatDuration(duration);
+      default:
+        return '';
+    }
+  };
 
   if (callState.status === 'idle') return null;
 
@@ -102,9 +113,7 @@ const CallOverlay: React.FC<CallOverlayProps> = ({ callState, remoteStream, onAc
         <h2 className="text-2xl font-semibold mb-2">{callState.peerName || 'Unknown User'}</h2>
         
         <p className="text-gray-500 mb-8 animate-pulse text-sm">
-          {callState.status === 'calling' && 'Calling...'}
-          {callState.status === 'ringing' && 'Incoming Call...'}
-          {callState.status === 'connected' && formatDuration(duration)}
+          {getStatusLabel()}
         </p>
 
         <div className="flex items-center gap-6">

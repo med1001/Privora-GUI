@@ -1,5 +1,17 @@
 import { useEffect, useRef, useState } from "react";
 
+const TRANSIENT_SIGNAL_TYPES = new Set([
+  "call_offer",
+  "call_answer",
+  "call_reject",
+  "call_end",
+  "call_ring",
+  "call_ring_offline",
+  "ice_candidate",
+  "ping",
+  "pong",
+]);
+
 const useWebSocket = (
   token: string | null,
   onMessageReceived: (message: any) => void,
@@ -150,6 +162,11 @@ const useWebSocket = (
     if (socket && socket.readyState === WebSocket.OPEN) {
       socket.send(JSON.stringify(payload));
     } else {
+      if (TRANSIENT_SIGNAL_TYPES.has(payload?.type)) {
+        console.warn("[WebSocket] Dropping transient payload while socket is unavailable:", payload?.type);
+        return;
+      }
+
       console.log("[WebSocket] Socket not ready, buffering raw payload:", payload.type);
       messageBufferRef.current.push(payload);
     }
