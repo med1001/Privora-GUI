@@ -96,6 +96,7 @@ const ChatWrapper: React.FC<{ onLogout: () => void; token: string }> = ({ onLogo
 
   const webRTC = useWebRTC(
     localUserId || "",
+    token,
     (payload) => sendRawMessageRef.current(payload),
           (otherUserId: string, durationStr: string, missed: boolean, caller: boolean) => {
         let textMarker = "";
@@ -135,7 +136,7 @@ const ChatWrapper: React.FC<{ onLogout: () => void; token: string }> = ({ onLogo
     token, 
     (parsed: any) => {
       try {
-        if (["call_offer", "call_answer", "ice_candidate", "call_reject", "call_end", "call_ring", "call_ring_offline"].includes(parsed.type)) {
+        if (["call_offer", "call_answer", "ice_candidate", "call_reject", "call_end", "call_ring", "call_ring_offline", "call_accepting", "call_connected"].includes(parsed.type)) {
         webRTC.handleWebRTCSignal(parsed);
         return;
       }

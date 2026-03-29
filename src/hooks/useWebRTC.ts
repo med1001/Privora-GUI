@@ -1,5 +1,10 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 
+interface RTCConfigPayload {
+  iceServers?: RTCIceServer[];
+  iceTransportPolicy?: RTCIceTransportPolicy;
+}
+
 export interface CallState {
   status: "idle" | "calling" | "calling_offline" | "ringing" | "connecting" | "connected" | "reconnecting";
   peerId: string | null;
@@ -16,8 +21,15 @@ const AUDIO_CONSTRAINTS = {
   }
 };
 
+const DEFAULT_ICE_SERVERS: RTCIceServer[] = [
+  { urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }
+];
+
+const TRACE_PREFIX = '[WebRTC TRACE]';
+
 export const useWebRTC = (
   localUserId: string,
+  authToken: string | null,
   sendRawMessage: (data: any) => void,
   onCallEnded: (peerId: string, durationStr: string, missed: boolean, caller: boolean) => void
 ) => {
@@ -30,10 +42,60 @@ export const useWebRTC = (
   const callStartTimeRef = useRef<number | null>(null);
   const currentCallIdRef = useRef<string | null>(null);
   const callStateRef = useRef<CallState>({ status: "idle", peerId: null, peerName: null, isIncoming: false, callId: null });
+  const rtcConfigRef = useRef<RTCConfigPayload>({ iceServers: DEFAULT_ICE_SERVERS, iceTransportPolicy: 'all' });
   const iceCandidateQueueRef = useRef<Array<{ callId: string; candidate: RTCIceCandidateInit }>>([]);
   const ringingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const callingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const connectionLossTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadRTCConfig = async () => {
+      if (!authToken) {
+        rtcConfigRef.current = { iceServers: DEFAULT_ICE_SERVERS, iceTransportPolicy: 'all' };
+        return;
+      }
+
+      const fallbackApiBase = window.location.hostname === 'localhost'
+        ? 'http://localhost:8000'
+        : `${window.location.protocol}//${window.location.host}`;
+      const apiBaseUrl = process.env.REACT_APP_API_URL || fallbackApiBase;
+
+      try {
+        const response = await fetch(`${apiBaseUrl}/api/rtc-config`, {
+          headers: {
+            Authorization: `Bearer ${authToken}`,
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(`RTC config request failed with ${response.status}`);
+        }
+
+        const data: RTCConfigPayload = await response.json();
+        if (!isMounted) {
+          return;
+        }
+
+        rtcConfigRef.current = {
+          iceServers: data.iceServers && data.iceServers.length > 0 ? data.iceServers : DEFAULT_ICE_SERVERS,
+          iceTransportPolicy: data.iceTransportPolicy || 'all',
+        };
+      } catch (error) {
+        console.error('[WebRTC] Failed to load RTC config, falling back to default STUN only.', error);
+        if (isMounted) {
+          rtcConfigRef.current = { iceServers: DEFAULT_ICE_SERVERS, iceTransportPolicy: 'all' };
+        }
+      }
+    };
+
+    loadRTCConfig();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [authToken]);
 
   useEffect(() => {
     callStateRef.current = callState;
@@ -75,6 +137,14 @@ export const useWebRTC = (
         console.log('[WebRTC] ICE flush error', error);
       }
     }
+  }, []);
+
+  const trace = useCallback((message: string, extra?: unknown) => {
+    if (extra !== undefined) {
+      console.log(`${TRACE_PREFIX} ${message}`, extra);
+      return;
+    }
+    console.log(`${TRACE_PREFIX} ${message}`);
   }, []);
 
   const toggleMute = useCallback(() => {
@@ -131,25 +201,8 @@ export const useWebRTC = (
 
   const createPeerConnection = useCallback((peerId: string, callId: string) => {
     const pc = new RTCPeerConnection({
-      iceServers: [
-        { urls: 'stun:stun.l.google.com:19302' },
-        { urls: 'stun:stun1.l.google.com:19302' },
-        {
-          urls: 'turn:openrelay.metered.ca:80',
-          username: 'openrelayproject',
-          credential: 'openrelayproject'
-        },
-        {
-          urls: 'turn:openrelay.metered.ca:443',
-          username: 'openrelayproject',
-          credential: 'openrelayproject'
-        },
-        {
-          urls: 'turn:openrelay.metered.ca:443?transport=tcp',
-          username: 'openrelayproject',
-          credential: 'openrelayproject'
-        }
-      ]
+      iceServers: rtcConfigRef.current.iceServers || DEFAULT_ICE_SERVERS,
+      iceTransportPolicy: rtcConfigRef.current.iceTransportPolicy || 'all'
     });
 
     pc.onicecandidate = (event) => {
@@ -157,6 +210,7 @@ export const useWebRTC = (
         return;
       }
 
+      trace(`Sending ICE candidate for callId=${callId}`);
       sendRawMessage({ type: 'ice_candidate', to: peerId, callId, candidate: event.candidate });
     };
 
@@ -165,7 +219,40 @@ export const useWebRTC = (
         return;
       }
 
+      trace(`Remote audio track received for callId=${callId}`);
       setRemoteStream(event.streams[0]);
+    };
+
+    pc.oniceconnectionstatechange = () => {
+      if (currentCallIdRef.current !== callId) {
+        return;
+      }
+
+      trace(`ICE state changed for callId=${callId}: ${pc.iceConnectionState}`);
+
+      if (pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed') {
+        if (!callStartTimeRef.current) {
+          callStartTimeRef.current = Date.now();
+        }
+        if (connectionLossTimeoutRef.current) {
+          clearTimeout(connectionLossTimeoutRef.current);
+          connectionLossTimeoutRef.current = null;
+        }
+        setCallState((prev) => prev.callId === callId ? { ...prev, status: 'connected' } : prev);
+        sendRawMessage({ type: 'call_connected', to: peerId, callId });
+      }
+
+      if (pc.iceConnectionState === 'failed') {
+        sendRawMessage({ type: 'call_end', to: peerId, callId, reason: 'ice_failed' });
+        cleanupCall(true);
+      }
+    };
+
+    pc.onsignalingstatechange = () => {
+      if (currentCallIdRef.current !== callId) {
+        return;
+      }
+      trace(`Signaling state changed for callId=${callId}: ${pc.signalingState}`);
     };
 
     pc.onconnectionstatechange = () => {
@@ -174,6 +261,7 @@ export const useWebRTC = (
       }
 
       const state = pc.connectionState;
+      trace(`Connection state changed for callId=${callId}: ${state}`);
       if (state === 'connected') {
         if (connectionLossTimeoutRef.current) {
           clearTimeout(connectionLossTimeoutRef.current);
@@ -185,6 +273,7 @@ export const useWebRTC = (
         }
 
         setCallState((prev) => prev.callId === callId ? { ...prev, status: 'connected' } : prev);
+        sendRawMessage({ type: 'call_connected', to: peerId, callId });
         return;
       }
 
@@ -220,6 +309,7 @@ export const useWebRTC = (
 
     const callId = crypto.randomUUID();
     currentCallIdRef.current = callId;
+    trace(`Initiating callId=${callId} to ${peerId}`);
     setCallState({ status: 'calling', peerId, peerName, isIncoming: false, callId });
 
     try {
@@ -282,6 +372,9 @@ export const useWebRTC = (
       await pc.setLocalDescription(answer);
       await flushQueuedIceCandidates(callId, pc);
 
+      trace(`Sending call_accepting for callId=${callId}`);
+      sendRawMessage({ type: 'call_accepting', to: peerId, callId });
+      trace(`Sending call_answer for callId=${callId}`);
       sendRawMessage({ type: 'call_answer', to: peerId, callId, answer });
     } catch (err) {
       console.error('Failed to accept call', err);
@@ -308,6 +401,8 @@ export const useWebRTC = (
     const type = parsed.type;
     const from = parsed.from;
     const callId = parsed.callId;
+
+    trace(`Received signal ${type} for callId=${callId ?? 'missing'} from ${from ?? 'unknown'}`, parsed);
 
     if (!callId) {
       console.warn('[WebRTC] Ignoring signaling payload without callId:', parsed);
@@ -380,6 +475,16 @@ export const useWebRTC = (
           : state
       ));
     }
+    else if (type === 'call_accepting') {
+      if (currentCallIdRef.current !== callId) {
+        return;
+      }
+      setCallState((state) => (
+        state.callId === callId && (state.status === 'calling' || state.status === 'calling_offline')
+          ? { ...state, status: 'connecting' }
+          : state
+      ));
+    }
     else if (type === 'call_answer') {
       if (currentCallIdRef.current !== callId) {
         return;
@@ -406,6 +511,15 @@ export const useWebRTC = (
       } else {
         console.warn("[WebRTC] Received call_answer but pcRef is null. Was the call prematurely closed?");
       }
+    }
+    else if (type === 'call_connected') {
+      if (currentCallIdRef.current !== callId) {
+        return;
+      }
+      if (!callStartTimeRef.current) {
+        callStartTimeRef.current = Date.now();
+      }
+      setCallState((state) => state.callId === callId ? { ...state, status: 'connected' } : state);
     }
     else if (type === 'ice_candidate') {
       if (currentCallIdRef.current !== callId) {
