@@ -27,6 +27,11 @@ const DEFAULT_ICE_SERVERS: RTCIceServer[] = [
 
 const TRACE_PREFIX = '[WebRTC TRACE]';
 
+/** Origin only (no /api suffix). REACT_APP_API_URL may wrongly include /api from some templates. */
+function normalizeApiBaseUrl(raw: string): string {
+  return raw.trim().replace(/\/+$/, '').replace(/\/api$/i, '');
+}
+
 export const useWebRTC = (
   localUserId: string,
   authToken: string | null,
@@ -60,7 +65,7 @@ export const useWebRTC = (
       const fallbackApiBase = window.location.hostname === 'localhost'
         ? 'http://localhost:8000'
         : `${window.location.protocol}//${window.location.host}`;
-      const apiBaseUrl = process.env.REACT_APP_API_URL || fallbackApiBase;
+      const apiBaseUrl = normalizeApiBaseUrl(process.env.REACT_APP_API_URL || fallbackApiBase);
 
       try {
         const response = await fetch(`${apiBaseUrl}/api/rtc-config`, {
