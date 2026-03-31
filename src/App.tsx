@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import Login from "./components/Login";
 import Register from "./components/Register";
@@ -62,6 +62,8 @@ const ChatWrapper: React.FC<{ onLogout: () => void; token: string }> = ({ onLogo
   const [messages, setMessages] = useState<Messages>({});
   const [recentChats, setRecentChats] = useState<UserSummary[]>([]);
   const [onlineUsers, setOnlineUsers] = useState<{ [userId: string]: boolean }>({});
+  /** Latest presence map for WS handlers (avoids stale `onlineUsers` when history/contacts run after presence in another tab). */
+  const onlineUsersRef = useRef<{ [userId: string]: boolean }>({});
   const { unreadCounts, incrementUnreadCount, resetUnreadCount } = useUnreadCounts();
   const playNotification = () => {
     try {
@@ -148,14 +150,20 @@ const ChatWrapper: React.FC<{ onLogout: () => void; token: string }> = ({ onLogo
             ? [{ userId: localUserId, displayName: selfDisplayName, online: true }]
             : [];
           // Build a map to deduplicate and always use latest displayName from backend
-          const chatMap = new Map();
+          const chatMap = new Map<string, UserSummary>();
+          prev.forEach((c) => chatMap.set(c.userId, c));
           selfChat.forEach((c) => chatMap.set(c.userId, c));
           parsed.contacts.forEach((c: UserSummary) => {
             if (c.userId !== localUserId) {
+              const prior = chatMap.get(c.userId);
               chatMap.set(c.userId, {
                 userId: c.userId,
                 displayName: getDisplayName(c.displayName, c.userId),
-                online: c.online,
+                online:
+                  onlineUsersRef.current[c.userId] ??
+                  prior?.online ??
+                  c.online ??
+                  false,
               });
             }
           });
@@ -273,7 +281,8 @@ const ChatWrapper: React.FC<{ onLogout: () => void; token: string }> = ({ onLogo
                 displayName = getDisplayName(undefined, userId);
               }
 
-              const currentlyOnline = onlineUsers[userId] ?? false;
+              const currentlyOnline =
+                onlineUsersRef.current[userId] ?? existing?.online ?? false;
 
               chatMap.set(userId, {
                 userId,
@@ -287,11 +296,12 @@ const ChatWrapper: React.FC<{ onLogout: () => void; token: string }> = ({ onLogo
       } else if (parsed.type === "presence" && parsed.userId && parsed.status) {
          
         const { userId, status } = parsed;
-         
+        const isOnline = status === "online";
+        onlineUsersRef.current = { ...onlineUsersRef.current, [userId]: isOnline };
 
         setOnlineUsers((prev) => ({
           ...prev,
-          [userId]: status === "online",
+          [userId]: isOnline,
         }));
 
         setRecentChats((prev) =>
