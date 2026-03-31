@@ -38,6 +38,11 @@ const useWebSocket = (
   useEffect(() => {
     let socketConnection: WebSocket | null = null;
     let isMounted = true;
+    const claimSignalingSessionIfForeground = () => {
+      if (!socketConnection || socketConnection.readyState !== WebSocket.OPEN) return;
+      if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
+      socketConnection.send(JSON.stringify({ type: "signal_session_claim" }));
+    };
 
     const connectWebSocket = () => {
       if (!token || !isMounted) return;
@@ -56,6 +61,8 @@ const useWebSocket = (
 
         const loginMessage = { type: "login", token };
         socketConnection?.send(JSON.stringify(loginMessage));
+        // Let the currently focused tab become the signaling leader.
+        claimSignalingSessionIfForeground();
 
         // Flush message buffer
         if (messageBufferRef.current.length > 0) {
@@ -132,6 +139,15 @@ const useWebSocket = (
       setSocket(socketConnection);
     };
 
+    const onWindowFocus = () => {
+      claimSignalingSessionIfForeground();
+    };
+    const onVisibilityChange = () => {
+      claimSignalingSessionIfForeground();
+    };
+    window.addEventListener("focus", onWindowFocus);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
     connectWebSocket();
 
     return () => {
@@ -146,6 +162,8 @@ const useWebSocket = (
         console.log("[WebSocket] Closing connection via cleanup...");
         socketConnection.close();
       }
+      window.removeEventListener("focus", onWindowFocus);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
     };
   }, [token]);
 
