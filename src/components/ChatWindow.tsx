@@ -9,6 +9,7 @@ import {
 
 import { MessageObj } from "../App";
 import { auth } from "../firebase-config";
+import { getApiBaseUrl } from "../lib/apiBase";
 
 interface UserSuggestion {
   userId: string;
@@ -69,8 +70,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   const imageInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   
-const fallbackApiUrl = window.location.hostname === "localhost" ? "http://localhost:8000" : `${window.location.protocol}//${window.location.host}`;
-  const API_URL = process.env.REACT_APP_API_URL || fallbackApiUrl;
+const API_URL = getApiBaseUrl();
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'file' | 'image' | 'camera') => {
       const file = e.target.files?.[0];
@@ -155,8 +155,7 @@ const fallbackApiUrl = window.location.hostname === "localhost" ? "http://localh
   const selectedChatDisplayName = selectedChat === userId ? `${rawSelectedName} (me)` : rawSelectedName;
 
   // Read API base URL from environment variables
-    const fallbackApiBase = window.location.hostname === "localhost" ? "http://localhost:8000" : `${window.location.protocol}//${window.location.host}`;     
-    const API_BASE_URL = process.env.REACT_APP_API_URL || fallbackApiBase;
+    const API_BASE_URL = getApiBaseUrl();
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;

@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
+import { getApiBaseUrl } from '../lib/apiBase';
 
 interface RTCConfigPayload {
   iceServers?: RTCIceServer[];
@@ -57,10 +58,7 @@ export const useWebRTC = (
         return;
       }
 
-      const fallbackApiBase = window.location.hostname === 'localhost'
-        ? 'http://localhost:8000'
-        : `${window.location.protocol}//${window.location.host}`;
-      const apiBaseUrl = process.env.REACT_APP_API_URL || fallbackApiBase;
+      const apiBaseUrl = getApiBaseUrl();
 
       try {
         const response = await fetch(`${apiBaseUrl}/api/rtc-config`, {
