@@ -1,9 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import { getWsUrl } from "../lib/apiBase";
 
+/**
+ * Outbound payloads that must never be queued while the socket is down.
+ * If buffered and flushed after reconnect, they would apply to the wrong moment and corrupt call state.
+ * Keep aligned with time-sensitive signaling from `useWebRTC` (offer/answer/ICE/call lifecycle).
+ */
 const TRANSIENT_SIGNAL_TYPES = new Set([
   "call_offer",
   "call_answer",
+  "call_accepting",
+  "call_connected",
   "call_reject",
   "call_end",
   "call_ring",
