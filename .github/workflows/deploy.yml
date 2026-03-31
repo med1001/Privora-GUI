@@ -29,6 +29,9 @@ jobs:
           context: .
           push: true
           tags: ${{ secrets.DOCKER_USERNAME }}/privora-gui:latest
+          build-args: |
+            REACT_APP_API_URL=https://privora-app.com
+            REACT_APP_WS_URL=wss://privora-app.com/ws
 
   deploy:
     needs: build-and-push
