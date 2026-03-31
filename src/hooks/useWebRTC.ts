@@ -48,6 +48,8 @@ export const useWebRTC = (
   const ringingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const callingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const connectionLossTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  /** Ensures we send `call_connected` at most once per peer connection (ICE + connection state both report success). */
+  const hasEmittedCallConnectedRef = useRef(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -170,6 +172,7 @@ export const useWebRTC = (
     const previousState = callStateRef.current;
     const activeCallId = currentCallIdRef.current;
     currentCallIdRef.current = null;
+    hasEmittedCallConnectedRef.current = false;
     iceCandidateQueueRef.current = iceCandidateQueueRef.current.filter((item) => item.callId !== activeCallId);
 
     const endTime = Date.now();
@@ -198,10 +201,29 @@ export const useWebRTC = (
   }, [clearCallTimers, onCallEnded, resetPeerConnection]);
 
   const createPeerConnection = useCallback((peerId: string, callId: string) => {
+    hasEmittedCallConnectedRef.current = false;
+
     const pc = new RTCPeerConnection({
       iceServers: rtcConfigRef.current.iceServers || DEFAULT_ICE_SERVERS,
       iceTransportPolicy: rtcConfigRef.current.iceTransportPolicy || 'all'
     });
+
+    const emitCallConnectedOnce = () => {
+      if (currentCallIdRef.current !== callId || hasEmittedCallConnectedRef.current) {
+        return;
+      }
+      hasEmittedCallConnectedRef.current = true;
+
+      if (!callStartTimeRef.current) {
+        callStartTimeRef.current = Date.now();
+      }
+      if (connectionLossTimeoutRef.current) {
+        clearTimeout(connectionLossTimeoutRef.current);
+        connectionLossTimeoutRef.current = null;
+      }
+      setCallState((prev) => (prev.callId === callId ? { ...prev, status: 'connected' } : prev));
+      sendRawMessage({ type: 'call_connected', to: peerId, callId });
+    };
 
     pc.onicecandidate = (event) => {
       if (!event.candidate || currentCallIdRef.current !== callId) {
@@ -229,15 +251,7 @@ export const useWebRTC = (
       trace(`ICE state changed for callId=${callId}: ${pc.iceConnectionState}`);
 
       if (pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed') {
-        if (!callStartTimeRef.current) {
-          callStartTimeRef.current = Date.now();
-        }
-        if (connectionLossTimeoutRef.current) {
-          clearTimeout(connectionLossTimeoutRef.current);
-          connectionLossTimeoutRef.current = null;
-        }
-        setCallState((prev) => prev.callId === callId ? { ...prev, status: 'connected' } : prev);
-        sendRawMessage({ type: 'call_connected', to: peerId, callId });
+        emitCallConnectedOnce();
       }
 
       if (pc.iceConnectionState === 'failed') {
@@ -261,17 +275,7 @@ export const useWebRTC = (
       const state = pc.connectionState;
       trace(`Connection state changed for callId=${callId}: ${state}`);
       if (state === 'connected') {
-        if (connectionLossTimeoutRef.current) {
-          clearTimeout(connectionLossTimeoutRef.current);
-          connectionLossTimeoutRef.current = null;
-        }
-
-        if (!callStartTimeRef.current) {
-          callStartTimeRef.current = Date.now();
-        }
-
-        setCallState((prev) => prev.callId === callId ? { ...prev, status: 'connected' } : prev);
-        sendRawMessage({ type: 'call_connected', to: peerId, callId });
+        emitCallConnectedOnce();
         return;
       }
 
