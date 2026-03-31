@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Search } from "lucide-react";
 import { auth } from "../firebase-config";
+import { getApiBaseUrl } from "../lib/apiBase";
 
 interface UserSuggestion {
   userId: string;
@@ -29,9 +30,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   const [suggestions, setSuggestions] = useState<UserSuggestion[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // REST base path: env override (full URL), otherwise "/api" on same origin
-    const fallbackApiBase = window.location.hostname === "localhost" ? "http://localhost:8000" : `${window.location.protocol}//${window.location.host}`;     
-    const API_BASE_URL = process.env.REACT_APP_API_URL || fallbackApiBase;
+  const API_BASE_URL = getApiBaseUrl();
   useEffect(() => {
     if (!search.trim()) {
       setSuggestions([]);

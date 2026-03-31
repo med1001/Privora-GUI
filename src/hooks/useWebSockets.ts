@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { getWsUrl } from "../lib/apiBase";
 
 const TRANSIENT_SIGNAL_TYPES = new Set([
   "call_offer",
@@ -41,7 +42,7 @@ const useWebSocket = (
     const connectWebSocket = () => {
       if (!token || !isMounted) return;
 
-      const wsUrl = process.env.REACT_APP_WS_URL || (window.location.protocol === "https:" ? "wss://" : "ws://") + window.location.host + "/ws";
+      const wsUrl = getWsUrl();
       console.log(`[WebSocket] Connecting... attempt ${attemptRef.current}`);
       setSocketStatus(attemptRef.current > 0 ? "reconnecting" : "connecting");
       

@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
+import { getApiBaseUrl } from '../lib/apiBase';
 
 interface RTCConfigPayload {
   iceServers?: RTCIceServer[];
@@ -26,11 +27,6 @@ const DEFAULT_ICE_SERVERS: RTCIceServer[] = [
 ];
 
 const TRACE_PREFIX = '[WebRTC TRACE]';
-
-/** Origin only (no /api suffix). REACT_APP_API_URL may wrongly include /api from some templates. */
-function normalizeApiBaseUrl(raw: string): string {
-  return raw.trim().replace(/\/+$/, '').replace(/\/api$/i, '');
-}
 
 export const useWebRTC = (
   localUserId: string,
@@ -62,10 +58,7 @@ export const useWebRTC = (
         return;
       }
 
-      const fallbackApiBase = window.location.hostname === 'localhost'
-        ? 'http://localhost:8000'
-        : `${window.location.protocol}//${window.location.host}`;
-      const apiBaseUrl = normalizeApiBaseUrl(process.env.REACT_APP_API_URL || fallbackApiBase);
+      const apiBaseUrl = getApiBaseUrl();
 
       try {
         const response = await fetch(`${apiBaseUrl}/api/rtc-config`, {

@@ -45,6 +45,7 @@ const Register = () => {
         <input
           type="text"
           placeholder="Username"
+          autoComplete="username"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
           className="w-full p-2 border rounded mb-2"
@@ -53,6 +54,7 @@ const Register = () => {
         <input
           type="email"
           placeholder="Email"
+          autoComplete="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           className="w-full p-2 border rounded mb-2"
@@ -61,6 +63,7 @@ const Register = () => {
         <input
           type="password"
           placeholder="Password"
+          autoComplete="new-password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           className="w-full p-2 border rounded mb-2"
