@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Phone, PhoneOff, User, Mic, MicOff, Volume2 } from 'lucide-react';
+import { Phone, PhoneOff, User, Mic, MicOff, Volume2, VolumeX } from 'lucide-react';
 import { CallState } from '../hooks/useWebRTC';
 
 interface CallOverlayProps {
@@ -16,6 +16,8 @@ const CallOverlay: React.FC<CallOverlayProps> = ({ callState, remoteStream, onAc
   const audioRef = useRef<HTMLAudioElement>(null);
   const ringtoneRef = useRef<HTMLAudioElement>(null);
   const [duration, setDuration] = useState(0);
+  /** Browser autoplay policy blocked remote <audio>.play(); cleared on success or new stream. */
+  const [remotePlayBlocked, setRemotePlayBlocked] = useState(false);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -66,18 +68,47 @@ const CallOverlay: React.FC<CallOverlayProps> = ({ callState, remoteStream, onAc
     };
   }, [callState.status]);
 
+  useEffect(() => {
+    if (callState.status === 'idle') {
+      setRemotePlayBlocked(false);
+    }
+  }, [callState.status]);
+
+  const tryPlayRemoteElement = (el: HTMLAudioElement) => {
+    const playPromise = el.play();
+    if (playPromise === undefined) return;
+    playPromise
+      .then(() => setRemotePlayBlocked(false))
+      .catch((e: DOMException) => {
+        if (e.name === 'AbortError') return;
+        console.warn('Remote audio error:', e);
+        if (e.name === 'NotAllowedError') {
+          setRemotePlayBlocked(true);
+        }
+      });
+  };
+
   // Attach remote stream when media is available.
   useEffect(() => {
-    if (remoteStream && audioRef.current) {
-      audioRef.current.srcObject = remoteStream;
-      const playPromise = audioRef.current.play();
-      if (playPromise !== undefined) {
-         playPromise.catch(e => {
-           if (e.name !== 'AbortError') console.log('Remote audio error:', e);
-         });
+    if (!remoteStream) {
+      setRemotePlayBlocked(false);
+      if (audioRef.current) {
+        audioRef.current.srcObject = null;
       }
+      return;
     }
+    const el = audioRef.current;
+    if (!el) return;
+    el.srcObject = remoteStream;
+    tryPlayRemoteElement(el);
   }, [remoteStream]);
+
+  const resumeRemoteAudio = () => {
+    const el = audioRef.current;
+    if (!el || !remoteStream) return;
+    el.srcObject = remoteStream;
+    tryPlayRemoteElement(el);
+  };
 
   const getStatusLabel = () => {
     switch (callState.status) {
@@ -102,7 +133,7 @@ const CallOverlay: React.FC<CallOverlayProps> = ({ callState, remoteStream, onAc
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <audio ref={audioRef} hidden autoPlay />
+      <audio ref={audioRef} hidden playsInline />
       <audio ref={ringtoneRef} hidden />
       
       <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full mx-4 flex flex-col items-center justify-center transform transition-all scale-100">
@@ -112,9 +143,35 @@ const CallOverlay: React.FC<CallOverlayProps> = ({ callState, remoteStream, onAc
         
         <h2 className="text-2xl font-semibold mb-2">{callState.peerName || 'Unknown User'}</h2>
         
-        <p className="text-gray-500 mb-8 animate-pulse text-sm">
+        <p
+          className={`text-gray-500 animate-pulse text-sm ${
+            remotePlayBlocked && remoteStream && callState.status !== 'ringing' ? 'mb-2' : 'mb-8'
+          }`}
+        >
           {getStatusLabel()}
         </p>
+
+        {remotePlayBlocked && remoteStream && callState.status !== 'ringing' && (
+          <div
+            className="mb-6 w-full rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-center"
+            role="alert"
+          >
+            <div className="mb-2 flex items-center justify-center gap-2 text-amber-900">
+              <VolumeX className="shrink-0" size={20} aria-hidden />
+              <span className="text-sm font-medium">Sound blocked by your browser</span>
+            </div>
+            <p className="mb-3 text-xs text-amber-800/90">
+              Tap the button below so the call audio can play.
+            </p>
+            <button
+              type="button"
+              onClick={resumeRemoteAudio}
+              className="w-full rounded-lg bg-amber-600 px-4 py-2.5 text-sm font-semibold text-white shadow hover:bg-amber-700"
+            >
+              Enable call sound
+            </button>
+          </div>
+        )}
 
         <div className="flex items-center gap-6">
           {(callState.status === 'ringing') ? (
