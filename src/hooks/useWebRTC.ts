@@ -481,6 +481,10 @@ export const useWebRTC = (
       if (currentCallIdRef.current !== callId) {
         return;
       }
+      if (callingTimeoutRef.current) {
+        clearTimeout(callingTimeoutRef.current);
+        callingTimeoutRef.current = null;
+      }
       setCallState((state) => (
         state.callId === callId && (state.status === 'calling' || state.status === 'calling_offline')
           ? { ...state, status: 'connecting' }
