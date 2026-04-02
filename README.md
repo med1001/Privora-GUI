@@ -6,8 +6,11 @@
 
 **Built with React • TypeScript • Tailwind CSS • Docker**
 
-> 💡 **Note:** This is the **frontend (GUI)** repository. For the backend server, see [Privora Backend](https://github.com/med1001/Privora)
+> 💡 **Note:** This is the **frontend (GUI)** repository. For the backend server, see [Privora Backend](https://github.com/med1001/Privora).
 
+**Full stack (clone GUI + backend + reverse proxy in one tree):** [Privora-Workspace](https://github.com/med1001/Privora-Workspace) — git submodules + `docker compose` for localhost. Stars stay on the original repos.
+
+[![Workspace](https://img.shields.io/badge/meta-Privora--Workspace-24292e?logo=github)](https://github.com/med1001/Privora-Workspace)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![React](https://img.shields.io/badge/React-18+-61DAFB?logo=react&logoColor=white)](https://reactjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5+-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
@@ -661,6 +664,8 @@ Privora-GUI/
 <br>
 
 ## 🤝 Contributing
+
+**Short guide:** [CONTRIBUTING.md](./CONTRIBUTING.md)
 
 Contributions are welcome! Here's how you can help:
 
