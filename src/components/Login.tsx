@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { signInWithEmailAndPassword } from "firebase/auth";
+import { sendPasswordResetEmail, signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "../firebase-config";
 
 interface LoginProps {
@@ -11,6 +11,8 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
   const navigate = useNavigate();
 
   const phrases = [
@@ -59,6 +61,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setMessage(null);
 
     try {
       const userCredential = await signInWithEmailAndPassword(
@@ -76,6 +79,27 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     } catch (err: any) {
       const firebaseError = err.message || "Login error.";
       setError(firebaseError);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    setError(null);
+    setMessage(null);
+
+    if (!email.trim()) {
+      setError("Enter your email address first.");
+      return;
+    }
+
+    try {
+      setIsResettingPassword(true);
+      await sendPasswordResetEmail(auth, email.trim());
+      setMessage("Password reset email sent. Check your inbox.");
+    } catch (err: any) {
+      const firebaseError = err.message || "Could not send password reset email.";
+      setError(firebaseError);
+    } finally {
+      setIsResettingPassword(false);
     }
   };
 
@@ -103,6 +127,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     <div className="w-full max-w-sm bg-white p-6 rounded-2xl shadow-xl space-y-4">
       <h2 className="text-xl font-semibold text-gray-800 text-center">Login</h2>
       {error && <p className="text-red-500 text-sm">{error}</p>}
+      {message && <p className="text-green-600 text-sm">{message}</p>}
 
       <form onSubmit={handleLogin} className="space-y-4">
         <input
@@ -123,6 +148,16 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
           className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           required
         />
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={handleForgotPassword}
+            disabled={isResettingPassword}
+            className="text-sm text-blue-500 hover:underline disabled:cursor-not-allowed disabled:text-blue-300"
+          >
+            {isResettingPassword ? "Sending..." : "Forgot password?"}
+          </button>
+        </div>
         <button
           type="submit"
           className="w-full bg-blue-600 text-white font-semibold py-3 rounded-lg hover:bg-blue-700 transition duration-200"
