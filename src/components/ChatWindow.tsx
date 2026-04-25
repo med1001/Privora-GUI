@@ -7,19 +7,13 @@ import {
   DropdownMenuItem,
 } from "./dropdown-menu";
 
-import { MessageObj } from "../App";
+import { MessageObj, UserSummary } from "../App";
 import { auth } from "../firebase-config";
-import { getApiBaseUrl } from "../lib/apiBase";
+import { getApiBaseUrl, resolveApiAssetUrl } from "../lib/apiBase";
+import Avatar from "./Avatar";
 
-interface UserSuggestion {
-  userId: string;
-  displayName: string;
-}
-
-interface RecentChat {
-  userId: string;
-  displayName: string;
-}
+interface UserSuggestion extends UserSummary {}
+interface RecentChat extends UserSummary {}
 
 interface ChatWindowProps {
   selectedChat: string;
@@ -27,8 +21,9 @@ interface ChatWindowProps {
   onSendMessage: (message: string, recipientUserId: string) => void;
   onSendReaction?: (msg_id: string, reaction: string, recipientUserId: string) => void;
   onLogout: () => void;
-  onSelectChat: (chatId: string, displayName?: string) => void;
+  onSelectChat: (chatId: string, displayName?: string, photoURL?: string | null) => void;
   onStartCall: (userId: string, displayName: string) => void;
+  onOpenSettings: () => void;
   recentChats: RecentChat[];
   onToggleSidebar?: () => void; // For mobile drawer toggle
   isMobile?: boolean; // NEW: tell if mobile
@@ -44,6 +39,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   onLogout,
   onSelectChat,
   onStartCall,
+  onOpenSettings,
   recentChats,
   onToggleSidebar,
   isMobile = false,
@@ -151,8 +147,11 @@ const API_URL = getApiBaseUrl();
     recentChats.find((c) => c.userId === selectedChat)?.displayName ||
     selectedChat ||
     "No user selected";
+  const selectedChatPhotoURL = recentChats.find((c) => c.userId === selectedChat)?.photoURL;
 
   const selectedChatDisplayName = selectedChat === userId ? `${rawSelectedName} (me)` : rawSelectedName;
+  const selectedChatAvatarUrl = resolveApiAssetUrl(selectedChatPhotoURL);
+  const selfAvatarUrl = resolveApiAssetUrl(localStorage.getItem("photoURL"));
 
   // Read API base URL from environment variables
     const API_BASE_URL = getApiBaseUrl();
@@ -212,7 +211,7 @@ const API_URL = getApiBaseUrl();
   }, [search, API_BASE_URL]);
 
   const handleSuggestionClick = (user: UserSuggestion) => {
-    onSelectChat(user.userId, user.displayName);
+    onSelectChat(user.userId, user.displayName, user.photoURL);
     setSearch("");
     setSuggestions([]);
   };
@@ -283,9 +282,18 @@ const API_URL = getApiBaseUrl();
             <Menu size={24} />
           </button>
           {selectedChat && (
-            <span className="text-lg font-semibold truncate">
-              {selectedChatDisplayName}
-            </span>
+            <>
+              <Avatar
+                src={selectedChatAvatarUrl}
+                alt={selectedChatDisplayName}
+                label={selectedChatDisplayName}
+                className="w-9 h-9 text-sm border border-white/30"
+                fallbackClassName="bg-blue-500 text-white"
+              />
+              <span className="text-lg font-semibold truncate">
+                {selectedChatDisplayName}
+              </span>
+            </>
           )}
         </div>
 
@@ -359,16 +367,20 @@ const API_URL = getApiBaseUrl();
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
-              className="w-10 h-10 bg-gray-300 text-black rounded-full flex items-center justify-center font-semibold"
+              className="w-10 h-10 bg-gray-300 text-black rounded-full flex items-center justify-center font-semibold overflow-hidden"
               aria-label="Profile menu"
             >
-              {(displayName.split(" ")[0][0] +
-                (displayName.split(" ")[1]?.[0] || "")
-              ).toUpperCase()}
+              <Avatar
+                src={selfAvatarUrl}
+                alt={displayName}
+                label={displayName}
+                className="w-full h-full text-sm"
+                fallbackClassName="bg-gray-300 text-black"
+              />
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="bg-white shadow-md rounded-lg p-2 w-40 z-30">
-            <DropdownMenuItem onClick={() => alert("Settings clicked!")}>
+            <DropdownMenuItem onClick={onOpenSettings}>
               <Settings className="w-4 h-4 mr-2" /> Settings
             </DropdownMenuItem>
             <DropdownMenuItem onClick={onLogout} className="text-red-600">

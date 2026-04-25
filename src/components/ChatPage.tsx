@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import Sidebar from "./Sidebar";
 import ChatWindow from "./ChatWindow";
 import { AnimatePresence } from "framer-motion";
+import SettingsModal from "./SettingsModal";
 
 const ChatPage = ({
   selectedChat,
@@ -15,8 +16,11 @@ const ChatPage = ({
   onStartCall,
   socketStatus,
   onlineUsers,
+  selfSummary,
+  onProfileUpdated,
 }: any) => {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const isPeerOnline = selectedChat ? !!onlineUsers?.[selectedChat] : false;
 
@@ -25,8 +29,10 @@ const ChatPage = ({
       {/* Desktop Sidebar */}
       <Sidebar
         onSelect={onSelectChat}
+        onOpenSettings={() => setSettingsOpen(true)}
         selectedChat={selectedChat}
         recentChats={recentChats}
+        selfSummary={selfSummary}
         unreadCounts={unreadCounts}
       />
 
@@ -42,6 +48,7 @@ const ChatPage = ({
           onStartCall={onStartCall}
           recentChats={recentChats}
           onToggleSidebar={() => setMobileSidebarOpen(true)}
+          onOpenSettings={() => setSettingsOpen(true)}
           socketStatus={socketStatus}
           peerOnline={isPeerOnline}
         />
@@ -51,8 +58,10 @@ const ChatPage = ({
           {mobileSidebarOpen && (
             <Sidebar
               onSelect={onSelectChat}
+              onOpenSettings={() => setSettingsOpen(true)}
               selectedChat={selectedChat}
               recentChats={recentChats}
+              selfSummary={selfSummary}
               unreadCounts={unreadCounts}
               isMobile
               onClose={() => setMobileSidebarOpen(false)}
@@ -60,6 +69,13 @@ const ChatPage = ({
           )}
         </AnimatePresence>
       </div>
+
+      <SettingsModal
+        isOpen={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        selfSummary={selfSummary}
+        onProfileUpdated={onProfileUpdated}
+      />
     </div>
   );
 };

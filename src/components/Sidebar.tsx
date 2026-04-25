@@ -1,18 +1,19 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Search } from "lucide-react";
+import { Search, Settings } from "lucide-react";
 import { auth } from "../firebase-config";
-import { getApiBaseUrl } from "../lib/apiBase";
+import { getApiBaseUrl, resolveApiAssetUrl } from "../lib/apiBase";
+import { UserSummary } from "../App";
+import Avatar from "./Avatar";
 
-interface UserSuggestion {
-  userId: string;
-  displayName: string;
-}
+interface UserSuggestion extends UserSummary {}
 
 interface SidebarProps {
-  onSelect: (userId: string, displayName?: string) => void;
+  onSelect: (userId: string, displayName?: string, photoURL?: string | null) => void;
+  onOpenSettings: () => void;
   selectedChat: string;
   recentChats: UserSuggestion[];
+  selfSummary?: UserSummary | null;
   unreadCounts?: Record<string, number>;
   isMobile?: boolean;
   onClose?: () => void;
@@ -20,8 +21,10 @@ interface SidebarProps {
 
 const Sidebar: React.FC<SidebarProps> = ({
   onSelect,
+  onOpenSettings,
   selectedChat,
   recentChats,
+  selfSummary,
   unreadCounts = {},
   isMobile = false,
   onClose,
@@ -66,7 +69,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   }, [search, API_BASE_URL]);
 
   const handleSuggestionClick = (user: UserSuggestion) => {
-    onSelect(user.userId, user.displayName);
+    onSelect(user.userId, user.displayName, user.photoURL);
     setSearch("");
     setSuggestions([]);
     if (isMobile) onClose?.();
@@ -136,11 +139,11 @@ const Sidebar: React.FC<SidebarProps> = ({
       <h2 className="text-sm font-semibold mb-2">Recent Chats</h2>
 
       <ul className="space-y-2 flex-1 overflow-y-auto">
-        {recentChats.map(({ userId, displayName }) => (
+        {recentChats.map(({ userId, displayName, photoURL }) => (
           <li
             key={userId}
             onClick={() => {
-              onSelect(userId, displayName);
+              onSelect(userId, displayName, photoURL);
               if (isMobile) onClose?.();
             }}
             className={`p-2 rounded cursor-pointer flex items-center justify-between gap-2 ${
@@ -149,9 +152,18 @@ const Sidebar: React.FC<SidebarProps> = ({
                 : "hover:bg-blue-700 transition"
             }`}
           >
-            <span className="truncate">
+            <div className="flex items-center gap-2 min-w-0">
+              <Avatar
+                src={resolveApiAssetUrl(photoURL)}
+                alt={displayName}
+                label={displayName || userId}
+                className="w-8 h-8 text-xs border border-white/20"
+                fallbackClassName="bg-blue-700 text-white"
+              />
+              <span className="truncate">
               {userId === localStorage.getItem("userId") ? `${displayName} (me)` : displayName}
-            </span>
+              </span>
+            </div>
             {unreadCounts[userId] ? (
               <span className="min-w-6 h-6 px-2 rounded-full bg-red-500 text-white text-xs font-bold flex items-center justify-center shadow-lg transform group-hover:scale-110 transition-transform duration-200">
                 {unreadCounts[userId] > 99 ? "99+" : unreadCounts[userId]}
@@ -160,6 +172,32 @@ const Sidebar: React.FC<SidebarProps> = ({
           </li>
         ))}
       </ul>
+
+      {selfSummary && (
+        <div className="pt-4 mt-4 border-t border-white/15 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <Avatar
+              src={resolveApiAssetUrl(selfSummary.photoURL)}
+              alt={selfSummary.displayName}
+              label={selfSummary.displayName || selfSummary.userId}
+              className="w-10 h-10 text-sm border border-white/20"
+              fallbackClassName="bg-blue-700 text-white"
+            />
+            <div className="min-w-0">
+              <p className="text-sm font-medium truncate">{selfSummary.displayName}</p>
+              <p className="text-xs text-blue-200 truncate">{selfSummary.userId}</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onOpenSettings}
+            className="p-2 rounded-full hover:bg-blue-700 transition"
+            aria-label="Open settings"
+          >
+            <Settings size={18} />
+          </button>
+        </div>
+      )}
     </motion.div>
   );
 };

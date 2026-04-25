@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import Login from "./components/Login";
 import Register from "./components/Register";
@@ -19,9 +19,10 @@ export interface MessageObj {
   reactions?: { [userId: string]: string };
 }
 
-interface UserSummary {
+export interface UserSummary {
   userId: string;
   displayName: string;
+  photoURL?: string | null;
   online?: boolean;
 }
 
@@ -56,11 +57,24 @@ const getDisplayName = (rawDisplayName: string | undefined | null, userId: strin
   return "";
 };
 
+const buildSelfSummary = (): UserSummary | null => {
+  const userId = localStorage.getItem("userId");
+  if (!userId) return null;
+
+  return {
+    userId,
+    displayName: getDisplayName(localStorage.getItem("displayName"), userId),
+    photoURL: localStorage.getItem("photoURL") || undefined,
+    online: true,
+  };
+};
+
 //  EXTRACT CHAT WRAPPER LOGIC OUT OF App FOR CLEANLINESS
 const ChatWrapper: React.FC<{ onLogout: () => void; token: string }> = ({ onLogout, token }) => {
   const [selectedChat, setSelectedChat] = useState<string | null>(null);
   const [messages, setMessages] = useState<Messages>({});
   const [recentChats, setRecentChats] = useState<UserSummary[]>([]);
+  const [selfSummary, setSelfSummary] = useState<UserSummary | null>(() => buildSelfSummary());
   const [onlineUsers, setOnlineUsers] = useState<{ [userId: string]: boolean }>({});
   /** Latest presence map for WS handlers (avoids stale `onlineUsers` when history/contacts run after presence in another tab). */
   const onlineUsersRef = useRef<{ [userId: string]: boolean }>({});
@@ -76,22 +90,16 @@ const ChatWrapper: React.FC<{ onLogout: () => void; token: string }> = ({ onLogo
 
   // Initialize with self-chat for notes on component mount
   useEffect(() => {
-    if (localUserId) {
-      const displayName = getDisplayName(localStorage.getItem("displayName"), localUserId);
+    if (selfSummary) {
       setRecentChats((prev) => {
-        // Remove any previous self-chat (in case of user switch)
-        const filtered = prev.filter((c) => c.userId !== localUserId);
-        // Add self-chat at the top
+        const filtered = prev.filter((c) => c.userId !== selfSummary.userId);
         return [
-          {
-            userId: localUserId,
-            displayName: displayName,
-          },
+          selfSummary,
           ...filtered,
         ];
       });
     }
-  }, [localUserId]);
+  }, [selfSummary]);
 
   const sendRawMessageRef = React.useRef<(payload: any) => void>(() => {});
   const sendWsMessageRef = React.useRef<(msg: string, to: string, displayName: string) => void>(() => {});
@@ -145,20 +153,19 @@ const ChatWrapper: React.FC<{ onLogout: () => void; token: string }> = ({ onLogo
 
       if (parsed.contacts && Array.isArray(parsed.contacts)) {
         setRecentChats((prev) => {
-          const selfDisplayName = getDisplayName(localStorage.getItem("displayName"), localUserId);
-          const selfChat = localUserId
-            ? [{ userId: localUserId, displayName: selfDisplayName, online: true }]
-            : [];
           // Build a map to deduplicate and always use latest displayName from backend
           const chatMap = new Map<string, UserSummary>();
           prev.forEach((c) => chatMap.set(c.userId, c));
-          selfChat.forEach((c) => chatMap.set(c.userId, c));
+          if (selfSummary) {
+            chatMap.set(selfSummary.userId, selfSummary);
+          }
           parsed.contacts.forEach((c: UserSummary) => {
             if (c.userId !== localUserId) {
               const prior = chatMap.get(c.userId);
               chatMap.set(c.userId, {
                 userId: c.userId,
                 displayName: getDisplayName(c.displayName, c.userId),
+                photoURL: c.photoURL ?? prior?.photoURL,
                 online:
                   onlineUsersRef.current[c.userId] ??
                   prior?.online ??
@@ -183,6 +190,7 @@ const ChatWrapper: React.FC<{ onLogout: () => void; token: string }> = ({ onLogo
           chatMap.set(from, { 
             userId: from, 
             displayName: fromDisplayName || existing?.displayName || getDisplayName(undefined, from),
+            photoURL: existing?.photoURL,
             online: existing?.online
           });
           return Array.from(chatMap.values());
@@ -240,16 +248,10 @@ const ChatWrapper: React.FC<{ onLogout: () => void; token: string }> = ({ onLogo
         }));
 
         setRecentChats((prev) => {
-          const selfDisplayName = getDisplayName(localStorage.getItem("displayName"), localUserId);
           const chatMap = new Map<string, UserSummary>();
 
-          // Ensure self-chat always present with correct name
-          if (localUserId) {
-            chatMap.set(localUserId, {
-              userId: localUserId,
-              displayName: selfDisplayName,
-              online: true,
-            });
+          if (selfSummary) {
+            chatMap.set(selfSummary.userId, selfSummary);
           }
 
           // Seed with existing entries for other users
@@ -287,6 +289,7 @@ const ChatWrapper: React.FC<{ onLogout: () => void; token: string }> = ({ onLogo
               chatMap.set(userId, {
                 userId,
                 displayName,
+                photoURL: existing?.photoURL,
                 online: currentlyOnline,
               });
             });
@@ -328,18 +331,12 @@ const ChatWrapper: React.FC<{ onLogout: () => void; token: string }> = ({ onLogo
     sendRawMessageRef.current = sendRawMessage;
   }, [sendRawMessage]);
 
-  const handleSelectChat = (userId: string, displayName?: string) => {
+  const handleSelectChat = (userId: string, displayName?: string, photoURL?: string | null) => {
     setSelectedChat(userId);
     resetUnreadCount(userId);
 
     setRecentChats((prev) => {
-      // Always keep self-chat at the top, remove any duplicate
-      const localUserId = localStorage.getItem("userId");
-      const displayNameSelf = getDisplayName(localStorage.getItem("displayName"), localUserId);
-      const selfChat = localUserId
-        ? [{ userId: localUserId, displayName: displayNameSelf, online: true }]
-        : [];
-      // Add / update selected user if not self
+      const selfChat = selfSummary ? [selfSummary] : [];
       const others = prev.filter((c) => c.userId !== localUserId && c.userId !== userId);
       if (userId !== localUserId) {
         return [
@@ -347,6 +344,7 @@ const ChatWrapper: React.FC<{ onLogout: () => void; token: string }> = ({ onLogo
           {
             userId,
             displayName: getDisplayName(displayName, userId),
+            photoURL: photoURL || prev.find((c) => c.userId === userId)?.photoURL,
             online: onlineUsers[userId] ?? false,
           },
           ...others,
@@ -355,6 +353,31 @@ const ChatWrapper: React.FC<{ onLogout: () => void; token: string }> = ({ onLogo
       return [...selfChat, ...others];
     });
   };
+
+  const handleProfileUpdated = useCallback((updatedProfile: Pick<UserSummary, "displayName" | "photoURL">) => {
+    const currentUserId = localStorage.getItem("userId");
+    if (!currentUserId) return;
+
+    localStorage.setItem("displayName", updatedProfile.displayName);
+    if (updatedProfile.photoURL) {
+      localStorage.setItem("photoURL", updatedProfile.photoURL);
+    } else {
+      localStorage.removeItem("photoURL");
+    }
+
+    const nextSelfSummary: UserSummary = {
+      userId: currentUserId,
+      displayName: updatedProfile.displayName,
+      photoURL: updatedProfile.photoURL,
+      online: true,
+    };
+
+    setSelfSummary(nextSelfSummary);
+    setRecentChats((prev) => {
+      const others = prev.filter((c) => c.userId !== currentUserId);
+      return [nextSelfSummary, ...others];
+    });
+  }, []);
 
   const sendMessage = (message: string, recipientUserId: string) => {
     if (message.trim() !== "" && recipientUserId && localUserId) {
@@ -416,6 +439,8 @@ const ChatWrapper: React.FC<{ onLogout: () => void; token: string }> = ({ onLogo
         onStartCall={webRTC.initiateCall}
         socketStatus={socketStatus}
         onlineUsers={onlineUsers}
+        selfSummary={selfSummary}
+        onProfileUpdated={handleProfileUpdated}
       />
       <CallOverlay
         callState={webRTC.callState}
@@ -444,6 +469,11 @@ const App: React.FC = () => {
           const freshToken = await user.getIdToken();
           localStorage.setItem("userId", user.email || user.uid);
           localStorage.setItem("displayName", user.displayName || user.email || "");
+          if (user.photoURL) {
+            localStorage.setItem("photoURL", user.photoURL);
+          } else {
+            localStorage.removeItem("photoURL");
+          }
           setToken(freshToken);
           setIsAuthenticated(true);
         } catch (err) {

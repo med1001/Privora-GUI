@@ -62,3 +62,10 @@ export function getWsUrl(): string {
   const h = pageIsLocalLoopback() ? '127.0.0.1' : host;
   return `${scheme}://${h}:8000/ws`;
 }
+
+export function resolveApiAssetUrl(raw?: string | null): string | null {
+  if (!raw) return null;
+  if (/^https?:\/\//i.test(raw)) return raw;
+  const normalizedPath = raw.startsWith("/") ? raw : `/${raw}`;
+  return `${getApiBaseUrl()}${normalizedPath}`;
+}
