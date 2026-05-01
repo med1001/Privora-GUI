@@ -7,7 +7,15 @@ interface RTCConfigPayload {
 }
 
 export interface CallState {
-  status: "idle" | "calling" | "calling_offline" | "ringing" | "connecting" | "connected" | "reconnecting";
+  status:
+    | "idle"
+    | "calling"
+    | "calling_offline"
+    | "calling_remote"
+    | "ringing"
+    | "connecting"
+    | "connected"
+    | "reconnecting";
   peerId: string | null;
   peerName: string | null;
   isIncoming: boolean;
@@ -462,8 +470,23 @@ export const useWebRTC = (
         return;
       }
       setCallState((state) => (
-        state.callId === callId && (state.status === 'calling' || state.status === 'calling_offline')
+        state.callId === callId &&
+        (state.status === 'calling' || state.status === 'calling_offline' || state.status === 'calling_remote')
           ? { ...state, status: 'calling' }
+          : state
+      ));
+    }
+    else if (type === 'call_ring_remote') {
+      // The callee is offline on the WebSocket but a high-priority FCM
+      // push has been dispatched. Show "Reaching device..." until the
+      // device acks the heads-up via /api/calls/{id}/ringing (which will
+      // then send a real `call_ring`).
+      if (currentCallIdRef.current !== callId) {
+        return;
+      }
+      setCallState((state) => (
+        state.callId === callId && state.status === 'calling'
+          ? { ...state, status: 'calling_remote' }
           : state
       ));
     }
@@ -486,7 +509,8 @@ export const useWebRTC = (
         callingTimeoutRef.current = null;
       }
       setCallState((state) => (
-        state.callId === callId && (state.status === 'calling' || state.status === 'calling_offline')
+        state.callId === callId &&
+        (state.status === 'calling' || state.status === 'calling_offline' || state.status === 'calling_remote')
           ? { ...state, status: 'connecting' }
           : state
       ));

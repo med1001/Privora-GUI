@@ -36,6 +36,10 @@ const CallOverlay: React.FC<CallOverlayProps> = ({ callState, remoteStream, onAc
   };
 
   // Play ringtone while the call is still waiting for pickup.
+  // Note: `calling_remote` is intentionally silent - the callee's
+  // device hasn't yet rendered the heads-up, so playing a ringtone on
+  // the caller side would be misleading ("phantom ringing"). The audio
+  // resumes once we transition to `calling` after the device acks.
   useEffect(() => {
     if (callState.status === 'calling' || callState.status === 'calling_offline' || callState.status === 'ringing') {
       const audio = ringtoneRef.current;
@@ -116,6 +120,8 @@ const CallOverlay: React.FC<CallOverlayProps> = ({ callState, remoteStream, onAc
         return 'Calling...';
       case 'calling_offline':
         return 'User is offline. Waiting for them to reconnect...';
+      case 'calling_remote':
+        return 'Reaching device...';
       case 'ringing':
         return 'Incoming Call...';
       case 'connecting':

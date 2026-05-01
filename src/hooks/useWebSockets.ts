@@ -15,6 +15,7 @@ const TRANSIENT_SIGNAL_TYPES = new Set([
   "call_end",
   "call_ring",
   "call_ring_offline",
+  "call_ring_remote",
   "ice_candidate",
   "ping",
   "pong",
