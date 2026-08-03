@@ -4,6 +4,7 @@ import Login from "./components/Login";
 import Register from "./components/Register";
 import ChatPage from "./components/ChatPage"; //  IMPORT THE NEW FILE
 import CallOverlay from "./components/CallOverlay";
+import LegalPage from "./components/LegalPage";
 import useWebSocket from "./hooks/useWebSockets";
 import { useWebRTC } from "./hooks/useWebRTC";
 import { useUnreadCounts } from "./hooks/useUnreadCounts";
@@ -512,6 +513,8 @@ const App: React.FC = () => {
 
   return (
     <Routes>
+      <Route path="/privacy" element={<LegalPage page="privacy" />} />
+      <Route path="/delete-account" element={<LegalPage page="delete-account" />} />
       <Route path="/login" element={isAuthenticated ? <Navigate to="/chat" /> : <Login onLogin={login} />} />
       <Route path="/register" element={isAuthenticated ? <Navigate to="/chat" /> : <Register />} />
       <Route
