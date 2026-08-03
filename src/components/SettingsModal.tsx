@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { AlertTriangle, LifeBuoy, Mail, Upload, X } from "lucide-react";
+import { AlertTriangle, LifeBuoy, Mail, ShieldCheck, Trash2, Upload, X } from "lucide-react";
+import { signOut } from "firebase/auth";
 import { auth } from "../firebase-config";
 import { getApiBaseUrl, resolveApiAssetUrl } from "../lib/apiBase";
 import { UserSummary } from "../App";
@@ -37,6 +38,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   const [issueStatus, setIssueStatus] = useState<string | null>(null);
   const [submittingContact, setSubmittingContact] = useState(false);
   const [submittingIssue, setSubmittingIssue] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
 
   const effectiveProfile = profile || {
     userId: selfSummary?.userId || "",
@@ -209,6 +211,36 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
     }
   };
 
+  const handleDeleteAccount = async () => {
+    const confirmation = window.prompt(
+      "This permanently deletes your Privora account and associated data. Type DELETE to continue."
+    );
+    if (confirmation !== "DELETE") return;
+
+    setContactStatus(null);
+    setDeletingAccount(true);
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) throw new Error("Authentication missing.");
+      const response = await fetch(`${apiBaseUrl}/api/settings/account`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ confirmation: "DELETE" }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.detail || "Could not delete your account.");
+      await signOut(auth);
+      localStorage.clear();
+      window.location.assign("/login");
+    } catch (error) {
+      setContactStatus(error instanceof Error ? error.message : "Could not delete your account.");
+      setDeletingAccount(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-[120] bg-black/50 flex items-center justify-center p-4">
       <div className="w-full max-w-4xl max-h-[90vh] overflow-y-auto bg-white shadow-2xl rounded-lg">
@@ -341,6 +373,33 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                 </button>
                 {issueStatus && <p className="text-sm text-gray-600">{issueStatus}</p>}
               </form>
+            </section>
+
+            <section className="border rounded-lg p-5 space-y-4">
+              <div className="flex items-center gap-2 text-gray-900">
+                <ShieldCheck size={18} />
+                <h3 className="font-semibold">Privacy and Account</h3>
+              </div>
+              <div className="flex flex-wrap gap-4 text-sm">
+                <a href="/privacy" target="_blank" rel="noreferrer" className="text-blue-700 hover:underline">
+                  Privacy policy
+                </a>
+                <a href="/delete-account" target="_blank" rel="noreferrer" className="text-blue-700 hover:underline">
+                  Account deletion information
+                </a>
+              </div>
+              <p className="text-sm text-gray-600">
+                Deleting your account permanently removes your profile, messages and associated Privora data.
+              </p>
+              <button
+                type="button"
+                onClick={() => void handleDeleteAccount()}
+                disabled={deletingAccount}
+                className="inline-flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 disabled:bg-red-300"
+              >
+                <Trash2 size={16} />
+                {deletingAccount ? "Deleting..." : "Delete Account"}
+              </button>
             </section>
           </div>
         </div>
